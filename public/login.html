@@ -35,14 +35,17 @@
             const password = document.getElementById('password').value;
 
             // Send POST request to backend API using axios
-            axios.post('http://localhost:3000/api/users/login', {
+            axios.post('/api/users/login', {
                 email: email,
                 password: password
             })
             .then(function(response) {
                 // Handle success
+                // Store user ID in local storage
+                localStorage.setItem('userId', response.data.userId);
                 document.getElementById('success-message').textContent = 'Login successful!';
                 document.getElementById('error-message').textContent = '';  // Clear previous error message
+                window.location.href = 'expenses.html';  // Redirect to expenses page
             })
             .catch(function(error) {
                 // Handle error
