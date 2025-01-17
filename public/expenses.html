@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Expenses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded shadow-lg w-96">
+        <h1 class="text-xl font-bold mb-4">Add Expense</h1>
+        <form action="/api/expenses/add" method="POST" id="expenseForm">
+            <div class="mb-4">
+                <label for="amount" class="block font-medium mb-1">Amount Spent:</label>
+                <input type="number" id="amount" name="amount" class="w-full px-4 py-2 border rounded">
+            </div>
+            <div class="mb-4">
+                <label for="description" class="block font-medium mb-1">Description:</label>
+                <input type="text" id="description" name="description" class="w-full px-4 py-2 border rounded">
+            </div>
+            <div class="mb-4">
+                <label for="category" class="block font-medium mb-1">Category:</label>
+                <select id="category" name="category" class="w-full px-4 py-2 border rounded">
+                    <option value="Food">Food</option>
+                    <option value="Petrol">Petrol</option>
+                    <option value="Salary">Salary</option>
+                </select>
+            </div>
+            <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">
+                Add Expense
+            </button>
+        </form>
+        <div id="expensesList" class="mt-6">
+            <!-- Expenses will be loaded here -->
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        const expenseForm = document.getElementById('expenseForm');
+        const expensesList = document.getElementById('expensesList');
+
+        // Submit the form
+        expenseForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const data = {
+                amount: document.getElementById('amount').value,
+                description: document.getElementById('description').value,
+                category: document.getElementById('category').value,
+            };
+
+            try {
+                await axios.post('/api/expenses', data); // Call backend API
+                alert('Expense added successfully!');
+                loadExpenses(); // Reload expenses
+            } catch (error) {
+                alert('Error adding expense');
+                console.error(error);
+            }
+        });
+
+        // Fetch and display expenses
+        async function loadExpenses() {
+            try {
+                const response = await axios.get('/api/expenses'); // Fetch from backend
+                expensesList.innerHTML = response.data.map(expense => `
+                    <div class="p-4 bg-gray-200 rounded mb-2 flex justify-between">
+                        <span>${expense.description} - ${expense.category} - $${expense.amount}</span>
+                        <button data-id="${expense.id}" class="text-red-500 delete-expense">Delete</button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error fetching expenses:', error);
+            }
+        }
+
+        // Load expenses on page load
+        loadExpenses();
+    </script>
+</body>
+</html>

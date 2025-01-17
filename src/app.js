@@ -1,16 +1,27 @@
 const express = require('express');
+const bodyParser = require('body-parser');
+const userRoutes = require('./routes/userRoutes');
+const expenseRoutes = require('./routes/expenseRoutes');
+const sequelize = require('./database/sequelize');
+const path = require('path');
 const dotenv = require('dotenv');
-const sequelize = require('./database/sequelize'); // Database connection
-const User = require('./models/User'); // Import the User model
-
+const exp = require('constants');
 dotenv.config();
 
 const app = express();
-app.use(express.json());
+
+app.use(bodyParser.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Routes
-const userRoutes = require('./routes/userRoutes');
-app.use('/api/users', userRoutes);
+app.use('/api/users', userRoutes); // User signup and login routes
+app.use('/api/expenses', expenseRoutes); // Expense routes
+
+// Default route to serve the frontend
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/signup.html')); // Serve the signup page
+});
 
 // Sync the database
 (async () => {
