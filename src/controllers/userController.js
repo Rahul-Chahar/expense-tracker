@@ -1,30 +1,37 @@
-const bcrypt = require('bcrypt');
 const User = require('../models/User');
+const bcrypt = require('bcrypt');
 
-const signupUser = async (req, res) => {
+// Sign Up Controller
+exports.signUp = async (req, res) => {
     const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
-        return res.status(400).json({ message: 'All fields are required!' });
-    }
-
     try {
+        // Check if user already exists
+        const existingUser = await User.findOne({ where: { email } });
+        if (existingUser) {
+            return res.status(409).json({ message: 'User already exists' });
+        }
+
+        // Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const user = await User.create({
+        // Create a new user
+        const newUser = await User.create({
             name,
             email,
             password: hashedPassword,
         });
 
-        return res.status(201).json({
+        res.status(201).json({
             message: 'User registered successfully!',
-            user,
+            user: {
+                id: newUser.id,
+                name: newUser.name,
+                email: newUser.email,
+            },
         });
     } catch (error) {
-        console.error('Error creating user:', error.message); // Log the specific error
+        console.error('Error creating user:', error.message);
         res.status(500).json({ message: 'Error creating user', error: error.message });
     }
 };
-
-module.exports = { signupUser };
