@@ -1,62 +1,165 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Signup - Expense Tracker</title>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Signup - Expense Tracker</title>
+   <script src="https://cdn.tailwindcss.com"></script>
+   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
-<body>
-    <h2>Signup to Expense Tracker</h2>
-    <form action="/api/users/signup" method="POST" id="signup-form">
-        <label for="name">Name:</label>
-        <input type="text" id="name" name="name" required>
-        <br><br>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+   <div class="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+       <!-- Header/Brand -->
+       <div class="text-center mb-8">
+           <h1 class="text-3xl font-bold text-gray-800">💰 Expense Tracker</h1>
+           <p class="text-gray-600 mt-2">Create your account to start tracking expenses</p>
+       </div>
 
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required>
-        <br><br>
+       <!-- Signup Form -->
+       <form id="signup-form" class="space-y-6">
+           <!-- Name Input -->
+           <div>
+               <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+                   Full Name
+               </label>
+               <input 
+                   type="text" 
+                   id="name" 
+                   name="name" 
+                   required
+                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                   placeholder="Enter your full name"
+               >
+           </div>
 
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required>
-        <br><br>
+           <!-- Email Input -->
+           <div>
+               <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                   Email Address
+               </label>
+               <input 
+                   type="email" 
+                   id="email" 
+                   name="email" 
+                   required
+                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                   placeholder="Enter your email"
+               >
+           </div>
 
-        <button type="submit">Signup</button>
-    </form>
+           <!-- Password Input -->
+           <div>
+               <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                   Password
+               </label>
+               <input 
+                   type="password" 
+                   id="password" 
+                   name="password" 
+                   required
+                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                   placeholder="Create a strong password"
+               >
+           </div>
 
-    <p id="error-message" style="color: red;"></p>
-    <p id="success-message" style="color: green;"></p>
+           <!-- Error/Success Messages -->
+           <p id="error-message" class="text-red-500 text-sm hidden"></p>
+           <p id="success-message" class="text-green-500 text-sm hidden"></p>
 
-    <script>
-        // Handle form submission
-        document.getElementById('signup-form').addEventListener('submit', function(event) {
-            event.preventDefault();  // Prevent default form submission
+           <!-- Signup Button -->
+           <button 
+               type="submit"
+               class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+           >
+               Create Account
+           </button>
+       </form>
 
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+       <!-- Login Link -->
+       <div class="mt-6 text-center">
+           <p class="text-gray-600">
+               Already have an account?
+               <a href="login.html" class="text-blue-600 hover:text-blue-700 font-medium ml-1">
+                   Login here
+               </a>
+           </p>
+       </div>
 
-            // Send POST request to backend API using axios
-            axios.post('http://localhost:3000/api/users/signup', {
-                name: name,
-                email: email,
-                password: password
-            })
-            .then(function(response) {
-                // Handle success
-                document.getElementById('success-message').textContent = 'User successfully registered!';
-                document.getElementById('error-message').textContent = '';  // Clear previous error message
-            })
-            .catch(function(error) {
-                // Handle error
-                if (error.response && error.response.data) {
-                    document.getElementById('error-message').textContent = error.response.data.message || 'An error occurred!';
-                } else {
-                    document.getElementById('error-message').textContent = 'Network error. Please try again later.';
-                }
-                document.getElementById('success-message').textContent = '';  // Clear previous success message
-            });
-        });
-    </script>
+       <!-- Features/Benefits Section -->
+       <div class="mt-8 pt-8 border-t border-gray-200">
+           <h3 class="text-center text-gray-600 font-medium mb-4">Benefits of joining</h3>
+           <div class="grid grid-cols-1 gap-4">
+               <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                   <span class="text-2xl">📊</span>
+                   <div>
+                       <h4 class="text-sm font-medium text-gray-800">Easy Expense Tracking</h4>
+                       <p class="text-xs text-gray-600">Track all your expenses in one place</p>
+                   </div>
+               </div>
+               <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                   <span class="text-2xl">📈</span>
+                   <div>
+                       <h4 class="text-sm font-medium text-gray-800">Smart Analytics</h4>
+                       <p class="text-xs text-gray-600">Get insights about your spending habits</p>
+                   </div>
+               </div>
+               <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                   <span class="text-2xl">🔔</span>
+                   <div>
+                       <h4 class="text-sm font-medium text-gray-800">Budget Alerts</h4>
+                       <p class="text-xs text-gray-600">Set budgets and get notifications</p>
+                   </div>
+               </div>
+           </div>
+       </div>
+   </div>
+
+   <script>
+       // Handle form submission
+       document.getElementById('signup-form').addEventListener('submit', function(event) {
+           event.preventDefault();
+
+           const name = document.getElementById('name').value;
+           const email = document.getElementById('email').value;
+           const password = document.getElementById('password').value;
+           const errorMessage = document.getElementById('error-message');
+           const successMessage = document.getElementById('success-message');
+
+           // Reset messages
+           errorMessage.classList.add('hidden');
+           successMessage.classList.add('hidden');
+
+           // Send POST request to backend API
+           axios.post('/api/users/signup', {
+               name: name,
+               email: email,
+               password: password
+           })
+           .then(function(response) {
+               // Handle success
+               successMessage.textContent = 'Account created successfully! Redirecting to login...';
+               successMessage.classList.remove('hidden');
+               
+               // Add loading state to button
+               const submitButton = event.target.querySelector('button[type="submit"]');
+               submitButton.textContent = 'Creating account...';
+               submitButton.disabled = true;
+
+               // Redirect to login page after 2 seconds
+               setTimeout(() => {
+                   window.location.href = 'login.html';
+               }, 2000);
+           })
+           .catch(function(error) {
+               // Handle error
+               if (error.response && error.response.data) {
+                   errorMessage.textContent = error.response.data.message || 'An error occurred!';
+               } else {
+                   errorMessage.textContent = 'Network error. Please try again later.';
+               }
+               errorMessage.classList.remove('hidden');
+           });
+       });
+   </script>
 </body>
 </html>
