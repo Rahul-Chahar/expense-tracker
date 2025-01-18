@@ -13,7 +13,7 @@
             <div class="flex justify-between items-center">
                 <div class="flex items-center space-x-3">
                     <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 8h6m-5 0a3 3 0 110 6H9l3 3m-3-6h6m6 1a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                     <h1 class="text-2xl font-bold text-slate-800">Expense Tracker</h1>
                 </div>
@@ -36,7 +36,7 @@
                     <div>
                         <label for="amount" class="block text-sm font-medium text-slate-700 mb-1">Amount Spent</label>
                         <div class="relative">
-                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400">$</span>
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400">₹</span>
                             <input type="number" id="amount" name="amount" required
                                 class="w-full pl-8 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                         </div>
@@ -50,11 +50,15 @@
                         <label for="category" class="block text-sm font-medium text-slate-700 mb-1">Category</label>
                         <select id="category" name="category" required
                             class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-                            <option value="Food">🍴 Food</option>
+                            <option value="Food">🍛 Food</option>
                             <option value="Petrol">⛽ Petrol</option>
-                            <option value="Salary">💰 Salary</option>
-                            <option value="Entertainment">🎮 Entertainment</option>
+                            <option value="Groceries">🛒 Groceries</option>
+                            <option value="Transportation">🚗 Transportation</option>
+                            <option value="Entertainment">🎭 Entertainment</option>
                             <option value="Shopping">🛍️ Shopping</option>
+                            <option value="Bills">📱 Bills & Recharge</option>
+                            <option value="Health">💊 Health</option>
+                            <option value="Education">📚 Education</option>
                             <option value="Other">📦 Other</option>
                         </select>
                     </div>
@@ -78,8 +82,8 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
         // Check if user is logged in
-        const userId = localStorage.getItem('userId');
-        if (!userId) {
+        const token = localStorage.getItem('token');
+        if (!token) {
             window.location.href = '/login.html';
         }
 
@@ -90,14 +94,15 @@
         expenseForm.addEventListener('submit', async (event) => {
             event.preventDefault();
             const data = {
-                userId: userId,
                 amount: document.getElementById('amount').value,
                 description: document.getElementById('description').value,
                 category: document.getElementById('category').value,
             };
 
             try {
-                await axios.post('/api/expenses/add', data);
+                await axios.post('/api/expenses/add', data, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 expenseForm.reset();
                 showNotification('Expense added successfully!');
                 loadExpenses();
@@ -107,39 +112,64 @@
             }
         });
 
+        // Format amount with Indian Rupee
+        function formatAmount(amount) {
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+
         // Fetch and display expenses
         async function loadExpenses() {
-            try {
-                const response = await axios.get(`/api/expenses/${userId}`);
-                expensesList.innerHTML = response.data.expenses.map(expense => `
-                    <div class="bg-white rounded-lg border border-slate-200 p-4 hover:shadow-sm transition-shadow duration-200">
-                        <div class="flex justify-between items-start">
-                            <div class="space-y-1">
-                                <p class="font-medium text-slate-800">${expense.description}</p>
-                                <p class="text-sm text-slate-500">${expense.category}</p>
-                            </div>
-                            <div class="flex items-center gap-4">
-                                <span class="font-semibold text-slate-800">$${expense.amount}</span>
-                                <button onclick="deleteExpense(${expense.id})" 
-                                    class="text-slate-400 hover:text-red-500 transition-colors duration-200">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (error) {
-                console.error('Error fetching expenses:', error);
-            }
+    try {
+        console.log('Fetching expenses...');
+        const response = await axios.get(`/api/expenses/user`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        console.log('Expenses received:', response.data);
+        
+        if (!response.data.expenses || !Array.isArray(response.data.expenses)) {
+            console.error('Invalid expenses data:', response.data);
+            return;
         }
+
+        expensesList.innerHTML = response.data.expenses.map(expense => `
+            <div class="bg-white rounded-lg border border-slate-200 p-4 hover:shadow-sm transition-shadow duration-200">
+                <div class="flex justify-between items-start">
+                    <div class="space-y-1">
+                        <p class="font-medium text-slate-800">${expense.description}</p>
+                        <p class="text-sm text-slate-500">${expense.category}</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="font-semibold text-slate-800">${formatAmount(expense.amount)}</span>
+                        <button onclick="deleteExpense(${expense.id})" 
+                            class="text-slate-400 hover:text-red-500 transition-colors duration-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error fetching expenses:', error);
+        if (error.response) {
+            console.error('Response data:', error.response.data);
+            console.error('Response status:', error.response.status);
+        }
+    }
+}
 
         // Delete expense
         async function deleteExpense(expenseId) {
             if (confirm('Are you sure you want to delete this expense?')) {
                 try {
-                    await axios.delete(`/api/expenses/${expenseId}`);
+                    await axios.delete(`/api/expenses/${expenseId}`,{
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
                     loadExpenses();
                     showNotification('Expense deleted successfully!');
                 } catch (error) {
@@ -163,7 +193,7 @@
 
         // Logout functionality
         function logout() {
-            localStorage.removeItem('userId');
+            localStorage.removeItem('token');
             window.location.href = '/login.html';
         }
 

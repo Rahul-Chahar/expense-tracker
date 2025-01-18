@@ -122,7 +122,7 @@
             })
             .then(function(response) {
                 // Handle success
-                localStorage.setItem('userId', response.data.userId);
+                localStorage.setItem('token', response.data.token);
                 successMessage.textContent = 'Login successful! Redirecting...';
                 successMessage.classList.remove('hidden');
                 
