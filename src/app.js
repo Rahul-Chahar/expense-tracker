@@ -33,7 +33,7 @@ app.get('/', (req, res) => {
 // Sync the database
 (async () => {
     try {
-        await sequelize.sync({ alter: true }); // Sync models with database
+        await sequelize.sync({ alter: false }); // Sync models with database
         console.log('Database synced successfully.');
     } catch (error) {
         console.error('Error syncing database:', error.message);
