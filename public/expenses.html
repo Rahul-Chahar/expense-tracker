@@ -241,54 +241,93 @@ handler: async function(response) {
                 showNotification('Error initiating payment', true);
             }
         });
-
-        // In expenses.html, add this to the existing script section
-function checkPremiumStatus() {
-    const token = localStorage.getItem('token');
-    const decodedToken = JSON.parse(atob(token.split('.')[1]));
-    
-    if (decodedToken.isPremium) {
-        const premiumBtn = document.getElementById('buyPremiumBtn');
-        premiumBtn.innerHTML = '👑 Premium User';
-        premiumBtn.disabled = true;
-        premiumBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
-        premiumBtn.classList.add('bg-yellow-600', 'cursor-default');
-        
-        // Add leaderboard button
-        if (!document.getElementById('leaderboardBtn')) {
-            const leaderboardBtn = document.createElement('button');
-            leaderboardBtn.id = 'leaderboardBtn';
-            leaderboardBtn.className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2';
-            leaderboardBtn.innerHTML = '🏆 Show Leaderboard';
-            leaderboardBtn.onclick = showLeaderboard;
-            premiumBtn.parentNode.insertBefore(leaderboardBtn, premiumBtn);
-        }
+        async function recalculateAllExpenses() {
+    try {
+        const token = localStorage.getItem('token');
+        await axios.post('/api/premium/recalculate-expenses', {}, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        showNotification('Expenses recalculated successfully!');
+    } catch (error) {
+        console.error('Error recalculating expenses:', error);
+        showNotification('Error recalculating expenses', true);
     }
 }
+        // In expenses.html, add this to the existing script section
+        async function checkPremiumStatus() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    try {
+        const decodedToken = JSON.parse(atob(token.split('.')[1]));
+        
+        if (decodedToken.isPremium) {
+            // Recalculate expenses first
+            await recalculateAllExpenses();
 
+            const premiumBtn = document.getElementById('buyPremiumBtn');
+            if (premiumBtn) {
+                premiumBtn.innerHTML = '👑 Premium User';
+                premiumBtn.disabled = true;
+                premiumBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+                premiumBtn.classList.add('bg-yellow-600', 'cursor-default');
+                
+                // Add leaderboard button if it doesn't exist
+                if (!document.getElementById('leaderboardBtn')) {
+                    const leaderboardBtn = document.createElement('button');
+                    leaderboardBtn.id = 'leaderboardBtn';
+                    leaderboardBtn.className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2';
+                    leaderboardBtn.innerHTML = '🏆 Show Leaderboard';
+                    leaderboardBtn.onclick = showLeaderboard;
+                    premiumBtn.parentNode.insertBefore(leaderboardBtn, premiumBtn);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error checking premium status:', error);
+        showNotification('Error checking premium status', true);
+    }
+}
 async function showLeaderboard() {
     try {
         const token = localStorage.getItem('token');
+        await recalculateAllExpenses();
+        
         const response = await axios.get('/api/premium/showLeaderboard', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        if (!response.data || response.data.length === 0) {
+            showNotification('No leaderboard data available');
+            return;
+        }
+
         // Create leaderboard UI
         const leaderboardHTML = `
-            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                <div class="bg-white p-6 rounded-lg max-w-md w-full">
-                    <h2 class="text-xl font-bold mb-4">Expense Leaderboard</h2>
-                    ${response.data.map((user, index) => `
-                        <div class="flex justify-between items-center py-2 border-b">
-                            <div class="flex items-center">
-                                <span class="text-lg font-bold mr-2">${index + 1}.</span>
-                                <span>${user.name}</span>
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded-lg max-w-md w-full m-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Expense Leaderboard</h2>
+                        <button onclick="this.closest('.fixed').remove()" 
+                            class="text-gray-500 hover:text-gray-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="max-h-96 overflow-y-auto">
+                        ${response.data.map((user, index) => `
+                            <div class="flex justify-between items-center py-3 border-b">
+                                <div class="flex items-center">
+                                    <span class="text-lg font-bold mr-2">${index + 1}.</span>
+                                    <span class="font-medium">${user.name || 'Anonymous'}</span>
+                                </div>
+                                <span class="font-semibold">${formatAmount(user.totalExpenses)}</span>
                             </div>
-                            <span class="font-semibold">${formatAmount(user.totalExpenses)}</span>
-                        </div>
-                    `).join('')}
-                    <button onclick="this.parentElement.parentElement.remove()" 
-                        class="mt-4 w-full bg-slate-200 text-slate-800 py-2 rounded-lg hover:bg-slate-300">
+                        `).join('')}
+                    </div>
+                    <button onclick="this.closest('.fixed').remove()" 
+                        class="mt-4 w-full bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 transition-colors">
                         Close
                     </button>
                 </div>
@@ -297,7 +336,7 @@ async function showLeaderboard() {
         document.body.insertAdjacentHTML('beforeend', leaderboardHTML);
     } catch (error) {
         console.error('Error fetching leaderboard:', error);
-        showNotification('Error fetching leaderboard', true);
+        showNotification('Error fetching leaderboard. Please try again.', true);
     }
 }
 

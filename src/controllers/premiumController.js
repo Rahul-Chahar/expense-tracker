@@ -1,6 +1,5 @@
 const { User, Expense } = require('../models/relationships');
-const { Sequelize } = require('sequelize');
-const sequelize = require('../database/sequelize' )// Adjust this path to where your database connection is configured
+const sequelize = require('../database/sequelize');
 
 exports.getPremiumStatus = async (req, res) => {
     try {
@@ -13,48 +12,57 @@ exports.getPremiumStatus = async (req, res) => {
 
 exports.getLeaderboard = async (req, res) => {
     try {
-        const leaderboardData = await User.findAll({
-            attributes: [
-                'name',
-                [sequelize.fn('IFNULL', sequelize.fn('SUM', sequelize.col('Expenses.amount')), 0), 'totalExpenses']
-            ],
-            include: [{
-                model: Expense,
-                attributes: [],
-                required: false
-            }],
-            group: ['User.id', 'User.name'],
-            order: [[sequelize.literal('totalExpenses'), 'DESC']]
+        const users = await User.findAll({
+            attributes: ['name', 'totalExpenses'],
+            order: [['totalExpenses', 'DESC']]  // Sort by totalExpenses in descending order
         });
 
-        // Format the response to ensure proper number values
-        const formattedLeaderboard = leaderboardData.map(user => ({
+        const formattedLeaderboard = users.map(user => ({
             name: user.name,
-            totalExpenses: Number(user.getDataValue('totalExpenses')) || 0
+            totalExpenses: Number(user.totalExpenses) || 0  // Convert to number, use 0 if null
         }));
 
         res.status(200).json(formattedLeaderboard);
     } catch (error) {
         console.error('Error in getLeaderboard:', error);
-        res.status(500).json({ message: 'Error fetching leaderboard' });
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching leaderboard',
+            error: error.message 
+        });
     }
 };
 
-// Helper function if you need to update a specific user's expenses
-exports.updateUserTotalExpenses = async (userId) => {
+exports.recalculateAllUserExpenses = async (req, res) => {
+    const t = await sequelize.transaction();
+    
     try {
-        const total = await Expense.sum('amount', {
-            where: { userId: userId }
-        });
+        const users = await User.findAll({ transaction: t });
         
-        await User.update(
-            { totalExpenses: total || 0 },
-            { where: { id: userId } }
-        );
+        for (const user of users) {
+            const totalExpense = await Expense.sum('amount', {
+                where: { userId: user.id },
+                transaction: t
+            }) || 0;
+            
+            await User.update(
+                { totalExpenses: totalExpense },
+                { 
+                    where: { id: user.id },
+                    transaction: t 
+                }
+            );
+        }
         
-        return total || 0;
+        await t.commit();
+        res.status(200).json({ message: 'All user expenses recalculated successfully' });
     } catch (error) {
-        console.error(`Error updating expenses for user ${userId}:`, error);
-        throw error;
+        await t.rollback();
+        console.error('Error recalculating user expenses:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error recalculating user expenses',
+            error: error.message 
+        });
     }
 };
