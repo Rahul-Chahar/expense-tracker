@@ -241,18 +241,7 @@ handler: async function(response) {
                 showNotification('Error initiating payment', true);
             }
         });
-        async function recalculateAllExpenses() {
-    try {
-        const token = localStorage.getItem('token');
-        await axios.post('/api/premium/recalculate-expenses', {}, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        showNotification('Expenses recalculated successfully!');
-    } catch (error) {
-        console.error('Error recalculating expenses:', error);
-        showNotification('Error recalculating expenses', true);
-    }
-}
+
         // In expenses.html, add this to the existing script section
         async function checkPremiumStatus() {
     const token = localStorage.getItem('token');
@@ -262,9 +251,7 @@ handler: async function(response) {
         const decodedToken = JSON.parse(atob(token.split('.')[1]));
         
         if (decodedToken.isPremium) {
-            // Recalculate expenses first
-            await recalculateAllExpenses();
-
+           
             const premiumBtn = document.getElementById('buyPremiumBtn');
             if (premiumBtn) {
                 premiumBtn.innerHTML = '👑 Premium User';
@@ -291,8 +278,8 @@ handler: async function(response) {
 async function showLeaderboard() {
     try {
         const token = localStorage.getItem('token');
-        await recalculateAllExpenses();
-        
+      
+
         const response = await axios.get('/api/premium/showLeaderboard', {
             headers: { 'Authorization': `Bearer ${token}` }
         });

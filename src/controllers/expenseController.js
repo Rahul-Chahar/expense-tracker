@@ -7,23 +7,20 @@ exports.addExpense = async (req, res) => {
     try {
         const { amount, description, category } = req.body;
         const userId = req.user.id;
-        const parsedAmount = parseFloat(amount);
 
-        // Create the expense
+        // Create expense
         const expense = await Expense.create({ 
             userId, 
-            amount: parsedAmount,
+            amount: parseFloat(amount),
             description, 
             category 
         }, { transaction: t });
 
-        // Get current user
-        const user = await User.findByPk(userId, { transaction: t });
-        const currentTotal = user.totalExpenses || 0;
-        
-        // Update total expenses
+        // Update user's totalExpenses directly
         await User.update(
-            { totalExpenses: currentTotal + parsedAmount },
+            { 
+                totalExpenses: sequelize.literal(`totalExpenses + ${parseFloat(amount)}`) 
+            },
             { 
                 where: { id: userId },
                 transaction: t 
@@ -48,6 +45,7 @@ exports.addExpense = async (req, res) => {
     }
 };
 
+
 exports.deleteExpense = async (req, res) => {
     const t = await sequelize.transaction();
 
@@ -68,20 +66,17 @@ exports.deleteExpense = async (req, res) => {
             });
         }
 
-        // Get current user
-        const user = await User.findByPk(userId, { transaction: t });
-        const currentTotal = user.totalExpenses || 0;
-        
-        // Update total expenses
+        // Update user's totalExpenses directly
         await User.update(
-            { totalExpenses: currentTotal - expense.amount },
+            { 
+                totalExpenses: sequelize.literal(`totalExpenses - ${parseFloat(expense.amount)}`) 
+            },
             { 
                 where: { id: userId },
                 transaction: t 
             }
         );
 
-        // Delete the expense
         await expense.destroy({ transaction: t });
         
         await t.commit();
