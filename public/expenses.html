@@ -159,23 +159,52 @@
                 const options = {
                     key: response.data.key_id,
                     order_id: response.data.order_id,
-                    handler: async function(response) {
-                        try {
-                            await axios.post('/api/payments/update-status', {
-                                payment_id: response.razorpay_payment_id,
-                                order_id: response.razorpay_order_id,
-                                status: 'SUCCESSFUL'
-                            }, {
-                                headers: { 'Authorization': `Bearer ${token}` }
-                            });
+                  // In the Razorpay options object, update the handler function:
+handler: async function(response) {
+    try {
+        // Update payment status
+        await axios.post('/api/payments/update-status', {
+            payment_id: response.razorpay_payment_id,
+            order_id: response.razorpay_order_id,
+            status: 'SUCCESSFUL'
+        }, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-                            showNotification('Payment successful! You are now a premium member!');
-                            showPremiumStatus();
-                        } catch (error) {
-                            console.error('Error updating payment status:', error);
-                            showNotification('Error processing payment', true);
-                        }
-                    },
+        // Get new token with updated premium status
+        const loginResponse = await axios.post('/api/users/login', {
+            email: JSON.parse(atob(token.split('.')[1])).email
+        }, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        // Update token in localStorage
+        localStorage.setItem('token', loginResponse.data.token);
+
+        showNotification('Payment successful! You are now a premium member!');
+        
+        // Update UI to reflect premium status
+        const premiumBtn = document.getElementById('buyPremiumBtn');
+        premiumBtn.innerHTML = '👑 Premium Member';
+        premiumBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+        premiumBtn.classList.add('bg-yellow-600', 'cursor-default');
+        premiumBtn.disabled = true;
+
+        // Add leaderboard button if it doesn't exist
+        if (!document.getElementById('leaderboardBtn')) {
+            const leaderboardBtn = document.createElement('button');
+            leaderboardBtn.id = 'leaderboardBtn';
+            leaderboardBtn.className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2';
+            leaderboardBtn.innerHTML = '🏆 Show Leaderboard';
+            leaderboardBtn.onclick = showLeaderboard;
+            premiumBtn.parentNode.insertBefore(leaderboardBtn, premiumBtn);
+        }
+
+    } catch (error) {
+        console.error('Error updating payment status:', error);
+        showNotification('Error processing payment', true);
+    }
+},
                     modal: {
                         ondismiss: async function() {
                             try {
@@ -200,6 +229,68 @@
                 showNotification('Error initiating payment', true);
             }
         });
+
+        // In expenses.html, add this to the existing script section
+function checkPremiumStatus() {
+    const token = localStorage.getItem('token');
+    const decodedToken = JSON.parse(atob(token.split('.')[1]));
+    
+    if (decodedToken.isPremium) {
+        const premiumBtn = document.getElementById('buyPremiumBtn');
+        premiumBtn.innerHTML = '👑 Premium User';
+        premiumBtn.disabled = true;
+        premiumBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+        premiumBtn.classList.add('bg-yellow-600', 'cursor-default');
+        
+        // Add leaderboard button
+        if (!document.getElementById('leaderboardBtn')) {
+            const leaderboardBtn = document.createElement('button');
+            leaderboardBtn.id = 'leaderboardBtn';
+            leaderboardBtn.className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2';
+            leaderboardBtn.innerHTML = '🏆 Show Leaderboard';
+            leaderboardBtn.onclick = showLeaderboard;
+            premiumBtn.parentNode.insertBefore(leaderboardBtn, premiumBtn);
+        }
+    }
+}
+
+async function showLeaderboard() {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get('/api/premium/showLeaderboard', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        // Create leaderboard UI
+        const leaderboardHTML = `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                <div class="bg-white p-6 rounded-lg max-w-md w-full">
+                    <h2 class="text-xl font-bold mb-4">Expense Leaderboard</h2>
+                    ${response.data.map((user, index) => `
+                        <div class="flex justify-between items-center py-2 border-b">
+                            <div class="flex items-center">
+                                <span class="text-lg font-bold mr-2">${index + 1}.</span>
+                                <span>${user.name}</span>
+                            </div>
+                            <span class="font-semibold">${formatAmount(user.totalExpenses)}</span>
+                        </div>
+                    `).join('')}
+                    <button onclick="this.parentElement.parentElement.remove()" 
+                        class="mt-4 w-full bg-slate-200 text-slate-800 py-2 rounded-lg hover:bg-slate-300">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', leaderboardHTML);
+    } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        showNotification('Error fetching leaderboard', true);
+    }
+}
+
+// Add this line to existing code
+window.addEventListener('load', checkPremiumStatus);
 
         // Fetch and display expenses
         async function loadExpenses() {

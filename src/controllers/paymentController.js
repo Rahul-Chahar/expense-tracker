@@ -41,40 +41,39 @@ exports.updateTransactionStatus = async (req, res) => {
     try {
         const { payment_id, order_id, status } = req.body;
 
-        // Use Promise.all for parallel execution
-        await Promise.all([
-            Order.update(
-                { 
-                    status: status,
-                    paymentId: payment_id 
-                },
-                { where: { orderId: order_id } }
-            ),
-            status === 'SUCCESSFUL' ? 
+        if (status === 'SUCCESSFUL') {
+            await Promise.all([
+                Order.update(
+                    { status, paymentId: payment_id },
+                    { where: { orderId: order_id } }
+                ),
                 User.update(
                     { isPremium: true },
                     { where: { id: req.user.id } }
-                ) : null
-        ].filter(Boolean));
-
-        res.json({ message: `Transaction ${status.toLowerCase()}` });
+                )
+            ]);
+            // Return updated premium status
+            res.json({ 
+                success: true,
+                message: 'Payment successful',
+                isPremium: true 
+            });
+        } else {
+            await Order.update(
+                { status, paymentId: payment_id },
+                { where: { orderId: order_id } }
+            );
+            res.json({ 
+                success: true,
+                message: `Transaction ${status.toLowerCase()}`,
+                isPremium: false 
+            });
+        }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error updating transaction' });
+        console.error('Error updating transaction:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error updating transaction' 
+        });
     }
 };
-
-// exports.tempAllowPremium = async (req, res) => {
-//     try {
-//         // Directly update the user's premium status
-//         await User.update(
-//             { isPremium: true },
-//             { where: { id: req.user.id } }
-//         );
-
-//         res.json({ message: 'You are now a premium member!' });
-//     } catch (error) {
-//         console.error('Error updating premium status:', error);
-//         res.status(500).json({ message: 'Error granting premium access' });
-//     }
-// };

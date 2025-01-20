@@ -3,14 +3,33 @@ const { Expense } = require('../models/relationships');
 // Add a new expense
 exports.addExpense = async (req, res) => {
     try {
-        
-    const { amount, description, category } = req.body;
-    const userId = req.user.id; // Get the user ID from authenticated request
+        const { amount, description, category } = req.body;
+        const userId = req.user.id;
 
-        const expense = await Expense.create({ userId, amount, description, category });
-        res.status(201).json({ message: 'Expense added successfully', expense });
+        const expense = await Expense.create({ 
+            userId, 
+            amount: parseFloat(amount), // Ensure amount is parsed as float
+            description, 
+            category 
+        });
+
+        await User.increment('totalExpenses', { 
+            by: parseFloat(amount), 
+            where: { id: userId } 
+        });
+
+        res.status(201).json({ 
+            success: true,
+            message: 'Expense added successfully', 
+            expense 
+        });
     } catch (error) {
-        res.status(500).json({ message: 'Error adding expense', error: error.message });
+        console.error('Error adding expense:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error adding expense', 
+            error: error.message 
+        });
     }
 };
 
@@ -42,6 +61,13 @@ exports.deleteExpense = async (req, res) => {
         if(!expense){
             return res.status(404).json({message: 'Expense not found or unauthorized'});
         }
+
+        // Decrease user's totalExpense
+        await User.decrement('totalExpenses', 
+            { 
+              by: -parseFloat(expense.amount), 
+              where: { id: userId } 
+            });
 
         await expense.destroy();
         res.status(200).json({ message: 'Expense deleted successfully' });
