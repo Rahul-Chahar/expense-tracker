@@ -1,4 +1,4 @@
-const { Expense } = require('../models/relationships');
+const { Expense, User } = require('../models/relationships');
 
 // Add a new expense
 exports.addExpense = async (req, res) => {
@@ -8,13 +8,14 @@ exports.addExpense = async (req, res) => {
 
         const expense = await Expense.create({ 
             userId, 
-            amount: parseFloat(amount), // Ensure amount is parsed as float
+            amount: parseFloat(amount), // Ensure amount is converted to float
             description, 
             category 
         });
 
+        // Update the totalExpense of the user
         await User.increment('totalExpenses', { 
-            by: parseFloat(amount), 
+            by: parseFloat(amount),
             where: { id: userId } 
         });
 
@@ -50,29 +51,39 @@ exports.getExpenses = async (req, res) => {
 // Delete an expense
 exports.deleteExpense = async (req, res) => {
     try {
-
         const { id } = req.params;
-        const userId = req.user.id; // Get the user ID from authenticated request
+        const userId = req.user.id;
 
         const expense = await Expense.findOne({
             where: { id, userId }
         });
 
-        if(!expense){
-            return res.status(404).json({message: 'Expense not found or unauthorized'});
+        if (!expense) {
+            return res.status(404).json({
+                success: false,
+                message: 'Expense not found or unauthorized'
+            });
         }
 
-        // Decrease user's totalExpense
-        await User.decrement('totalExpenses', 
-            { 
-              by: -parseFloat(expense.amount), 
-              where: { id: userId } 
-            });
+        // First update the user's totalExpenses
+        await User.decrement('totalExpenses', { 
+            by: parseFloat(expense.amount),
+            where: { id: userId } 
+        });
 
+        // Then delete the expense
         await expense.destroy();
-        res.status(200).json({ message: 'Expense deleted successfully' });
 
+        res.status(200).json({
+            success: true,
+            message: 'Expense deleted successfully'
+        });
     } catch (error) {
-        res.status(500).json({ message: 'Error deleting expense', error: error.message });
+        console.error('Error deleting expense:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting expense',
+            error: error.message
+        });
     }
 };
