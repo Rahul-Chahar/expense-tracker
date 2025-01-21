@@ -1,3 +1,4 @@
+// expenseController.js
 const { Expense, User } = require('../models/relationships');
 const sequelize = require('../database/sequelize');
 
@@ -8,7 +9,6 @@ exports.addExpense = async (req, res) => {
         const { amount, description, category } = req.body;
         const userId = req.user.id;
 
-        // Create expense
         const expense = await Expense.create({ 
             userId, 
             amount: parseFloat(amount),
@@ -16,35 +16,18 @@ exports.addExpense = async (req, res) => {
             category 
         }, { transaction: t });
 
-        // Update user's totalExpenses directly
         await User.update(
-            { 
-                totalExpenses: sequelize.literal(`totalExpenses + ${parseFloat(amount)}`) 
-            },
-            { 
-                where: { id: userId },
-                transaction: t 
-            }
+            { totalExpenses: sequelize.literal(`totalExpenses + ${parseFloat(amount)}`) },
+            { where: { id: userId }, transaction: t }
         );
 
         await t.commit();
-
-        res.status(201).json({ 
-            success: true,
-            message: 'Expense added successfully', 
-            expense 
-        });
+        return res.status(201).json({ expense });
     } catch (error) {
         await t.rollback();
-        console.error('Error adding expense:', error);
-        res.status(500).json({ 
-            success: false,
-            message: 'Error adding expense', 
-            error: error.message 
-        });
+        return res.status(500).json({ message: 'Error adding expense' });
     }
 };
-
 
 exports.deleteExpense = async (req, res) => {
     const t = await sequelize.transaction();
@@ -60,39 +43,21 @@ exports.deleteExpense = async (req, res) => {
 
         if (!expense) {
             await t.rollback();
-            return res.status(404).json({
-                success: false,
-                message: 'Expense not found or unauthorized'
-            });
+            return res.status(404).json({ message: 'Expense not found or unauthorized' });
         }
 
-        // Update user's totalExpenses directly
         await User.update(
-            { 
-                totalExpenses: sequelize.literal(`totalExpenses - ${parseFloat(expense.amount)}`) 
-            },
-            { 
-                where: { id: userId },
-                transaction: t 
-            }
+            { totalExpenses: sequelize.literal(`totalExpenses - ${expense.amount}`) },
+            { where: { id: userId }, transaction: t }
         );
 
         await expense.destroy({ transaction: t });
-        
         await t.commit();
-
-        res.status(200).json({
-            success: true,
-            message: 'Expense deleted successfully'
-        });
+        
+        return res.status(200).json({ message: 'Expense deleted successfully' });
     } catch (error) {
         await t.rollback();
-        console.error('Error deleting expense:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error deleting expense',
-            error: error.message
-        });
+        return res.status(500).json({ message: 'Error deleting expense' });
     }
 };
 
@@ -104,12 +69,8 @@ exports.getExpenses = async (req, res) => {
             order: [['createdAt', 'DESC']] 
         });
         
-        res.status(200).json({ expenses });
+        return res.status(200).json({ expenses });
     } catch (error) {
-        console.error('Error fetching expenses:', error.message);
-        res.status(500).json({ 
-            message: 'Error fetching expenses', 
-            error: error.message 
-        });
+        return res.status(500).json({ message: 'Error fetching expenses' });
     }
 };

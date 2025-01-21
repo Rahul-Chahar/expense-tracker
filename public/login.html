@@ -60,16 +60,23 @@
             </button>
         </form>
 
+        <!-- Forgot Password Link -->
+        <div class="mt-4 text-center">
+            <button 
+                id="forgot-password-link"
+                class="text-blue-600 hover:text-blue-700 text-sm"
+            >
+                Forgot Password?
+            </button>
+        </div>
+
         <!-- Sign Up Link -->
         <div class="mt-6 text-center">
             <p class="text-gray-600">
                 Don't have an account?
-                <button 
-                    id="signup-button"
-                    class="text-blue-600 hover:text-blue-700 font-medium ml-1"
-                >
+                <a href="signup.html" class="text-blue-600 hover:text-blue-700 font-medium ml-1">
                     Sign up now
-                </button>
+                </a>
             </p>
         </div>
 
@@ -101,54 +108,133 @@
         </div>
     </div>
 
+    <!-- Forgot Password Modal -->
+    <div id="forgot-password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Reset Password</h2>
+                <button onclick="closeForgotPasswordModal()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <p class="text-gray-600 mb-4">Enter your email address and we'll send you a link to reset your password.</p>
+            <form id="forgot-password-form" class="space-y-4">
+                <div>
+                    <label for="reset-email" class="block text-sm font-medium text-gray-700 mb-1">
+                        Email Address
+                    </label>
+                    <input 
+                        type="email" 
+                        id="reset-email" 
+                        required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter your email"
+                    >
+                </div>
+                <button 
+                    type="submit"
+                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                >
+                    Send Reset Link
+                </button>
+            </form>
+        </div>
+    </div>
+
     <script>
-        // Handle form submission for login
-        document.getElementById('login-form').addEventListener('submit', function(event) {
+        // Notification function
+        function showNotification(message, isError = false) {
+            const div = document.createElement('div');
+            div.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white ${
+                isError ? 'bg-red-500' : 'bg-green-500'
+            } shadow-lg transform transition-transform duration-300 z-50`;
+            div.textContent = message;
+            document.body.appendChild(div);
+            
+            setTimeout(() => {
+                div.remove();
+            }, 3000);
+        }
+
+        // Forgot Password Modal Functions
+        function showForgotPasswordModal() {
+            document.getElementById('forgot-password-modal').classList.remove('hidden');
+        }
+
+        function closeForgotPasswordModal() {
+            document.getElementById('forgot-password-modal').classList.add('hidden');
+        }
+
+        // Handle login form submission
+        document.getElementById('login-form').addEventListener('submit', async function(event) {
             event.preventDefault();
 
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const errorMessage = document.getElementById('error-message');
-            const successMessage = document.getElementById('success-message');
+            const submitButton = event.target.querySelector('button[type="submit"]');
 
-            // Reset messages
-            errorMessage.classList.add('hidden');
-            successMessage.classList.add('hidden');
-
-            // Send POST request to backend API using axios
-            axios.post('/api/users/login', {
-                email: email,
-                password: password
-            })
-            .then(function(response) {
-                // Handle success
-                localStorage.setItem('token', response.data.token);
-                successMessage.textContent = 'Login successful! Redirecting...';
-                successMessage.classList.remove('hidden');
-                
-                // Add loading state to button
-                const submitButton = event.target.querySelector('button[type="submit"]');
-                submitButton.textContent = 'Logging in...';
+            try {
                 submitButton.disabled = true;
+                submitButton.textContent = 'Logging in...';
 
-                setTimeout(() => {
-                    window.location.href = 'expenses.html';
-                }, 1000);
-            })
-            .catch(function(error) {
-                // Handle error
-                if (error.response && error.response.data) {
-                    errorMessage.textContent = error.response.data.message || 'An error occurred!';
-                } else {
-                    errorMessage.textContent = 'Network error. Please try again later.';
+                const response = await axios.post('/api/users/login', {
+                    email: email,
+                    password: password
+                });
+
+                if (response.data.token) {
+                    localStorage.setItem('token', response.data.token);
+                    showNotification('Login successful! Redirecting...');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/expenses.html';
+                    }, 1000);
                 }
-                errorMessage.classList.remove('hidden');
-            });
+            } catch (error) {
+                showNotification(
+                    error.response?.data?.message || 'Error logging in. Please try again.', 
+                    true
+                );
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Login';
+            }
         });
 
-        // Redirect to signup page
-        document.getElementById('signup-button').addEventListener('click', function() {
-            window.location.href = 'signup.html';
+        // Show modal when clicking forgot password link
+        document.getElementById('forgot-password-link').addEventListener('click', showForgotPasswordModal);
+
+        // Handle forgot password form submission
+        document.getElementById('forgot-password-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('reset-email').value;
+            const submitButton = event.target.querySelector('button[type="submit"]');
+            
+            try {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Sending...';
+                
+                console.log('Sending request for email:', email);
+                const response = await axios.post('/api/password/forgotpassword', { email });
+                console.log('Server response:', response);
+
+                if (response.data.success) {
+                    showNotification('Password reset link sent to your email!');
+                    closeForgotPasswordModal();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification(
+                    error.response?.data?.message || 'Error sending reset link', 
+                    true
+                );
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Send Reset Link';
+            }
         });
     </script>
 </body>

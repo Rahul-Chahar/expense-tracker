@@ -28,10 +28,7 @@ exports.signUp = async (req, res) => {
         });
     } catch (error) {
         console.error('Error creating user:', error.message);
-        res.status(500).json({ 
-            message: 'Error creating user', 
-            error: error.message 
-        });
+        res.status(500).json({ message: 'Error creating user' });
     }
 };
 
@@ -44,15 +41,9 @@ exports.login = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        if (password) {
-            const isPasswordValid = await bcrypt.compare(password, user.password);
-            if (!isPasswordValid) {
-                return res.status(401).json({ message: 'Invalid password' });
-            }
-        } else {
-            if (!req.headers.authorization) {
-                return res.status(401).json({ message: 'Unauthorized' });
-            }
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: 'Invalid password' });
         }
 
         const token = jwt.sign(
@@ -72,9 +63,6 @@ exports.login = async (req, res) => {
         });
     } catch (error) {
         console.error('Error logging in user:', error.message);
-        res.status(500).json({ 
-            message: 'Error logging in user', 
-            error: error.message 
-        });
+        res.status(500).json({ message: 'Error logging in user' });
     }
 };

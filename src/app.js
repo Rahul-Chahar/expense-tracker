@@ -5,43 +5,43 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const sequelize = require('./database/sequelize');
 const paymentRoutes = require('./routes/paymentRoutes');
 const premiumRoutes = require('./routes/premiumRoutes');
+const passwordRoutes = require('./routes/passwordRoutes');
 const path = require('path');
 const cors = require('cors');
 const dotenv = require('dotenv');
-// Import relationships
 require('./models/relationships');
 
 dotenv.config();
 
 const app = express();
 
-
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Routes
-app.use('/api/users', userRoutes); // User signup and login routes
-app.use('/api/expenses', expenseRoutes); // Expense routes
-app.use('/api/payments', paymentRoutes); // Payment routes
-app.use('/api/premium', premiumRoutes); // Premium routes
+app.use('/api/users', userRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/premium', premiumRoutes);
+app.use('/api/password', passwordRoutes);
 
-// Default route to serve the frontend
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/signup.html')); // Serve the signup page
+    res.sendFile(path.join(__dirname, '../public/signup.html'));
 });
 
-// Sync the database
-(async () => {
+// Database sync and server start
+const startServer = async () => {
     try {
-        await sequelize.sync({ alter: true }); // Sync models with database
+        await sequelize.sync({ alter: false });
         console.log('Database synced successfully.');
+        
+        const PORT = process.env.PORT || 8080;
+        app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     } catch (error) {
-        console.error('Error syncing database:', error.message);
+        console.error('Error starting server:', error.message);
+        process.exit(1);
     }
-})();
+};
 
-// Start server
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+startServer();

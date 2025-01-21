@@ -114,17 +114,13 @@
             category: document.getElementById('category').value,
         };
 
-        const response = await axios.post('/api/expenses/add', data, {
+        await axios.post('/api/expenses/add', data, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (response.data.success) {
-            expenseForm.reset();
-            showNotification('Expense added successfully!');
-            await loadExpenses(); // Reload the expenses list
-        } else {
-            showNotification('Failed to add expense', true);
-        }
+        expenseForm.reset();
+        showNotification('Expense added successfully!');
+        await loadExpenses(); // Reload the expenses list
     } catch (error) {
         console.error('Error adding expense:', error);
         showNotification(error.response?.data?.message || 'Error adding expense', true);
@@ -375,16 +371,12 @@ window.addEventListener('load', checkPremiumStatus);
     }
 
     try {
-        const response = await axios.delete(`/api/expenses/${expenseId}`, {
+        await axios.delete(`/api/expenses/${expenseId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (response.data.success) {
-            showNotification('Expense deleted successfully!');
-            await loadExpenses(); // Reload the expenses list
-        } else {
-            showNotification('Failed to delete expense', true);
-        }
+        await loadExpenses(); // Reload the expenses list
+        showNotification('Expense deleted successfully!');
     } catch (error) {
         console.error('Error deleting expense:', error);
         showNotification(error.response?.data?.message || 'Error deleting expense', true);
