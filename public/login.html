@@ -208,34 +208,34 @@
 
         // Handle forgot password form submission
         document.getElementById('forgot-password-form').addEventListener('submit', async function(event) {
-            event.preventDefault();
-            
-            const email = document.getElementById('reset-email').value;
-            const submitButton = event.target.querySelector('button[type="submit"]');
-            
-            try {
-                submitButton.disabled = true;
-                submitButton.textContent = 'Sending...';
-                
-                console.log('Sending request for email:', email);
-                const response = await axios.post('/api/password/forgotpassword', { email });
-                console.log('Server response:', response);
+    event.preventDefault();
+    
+    const email = document.getElementById('reset-email').value;
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    
+    try {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Sending...';
+        
+        const response = await axios.post('/api/password/forgotpassword', { email });
 
-                if (response.data.success) {
-                    showNotification('Password reset link sent to your email!');
-                    closeForgotPasswordModal();
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showNotification(
-                    error.response?.data?.message || 'Error sending reset link', 
-                    true
-                );
-            } finally {
-                submitButton.disabled = false;
-                submitButton.textContent = 'Send Reset Link';
-            }
-        });
+        if (response.data.success) {
+            showNotification('Password reset link sent to your email!');
+            closeForgotPasswordModal();
+        } else {
+            showNotification('Error sending reset link', true);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification(
+            error.response?.data?.message || 'Error sending reset link', 
+            true
+        );
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Send Reset Link';
+    }
+});
     </script>
 </body>
 </html>
