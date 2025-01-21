@@ -80,14 +80,68 @@
             <!-- Expenses List -->
             <div>
                 <h2 class="text-xl font-semibold text-gray-800 mb-4">Recent Expenses</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center space-x-2">
+                            <label for="itemsPerPage" class="text-sm text-gray-600">Items per page:</label>
+                            <select id="itemsPerPage" class="px-2 py-1 border rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="5">5</option>
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="30">30</option>
+                                <option value="40">40</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
                 <div id="expensesList" class="space-y-3">
                     <!-- Expenses will be loaded here -->
+                </div>
+                <div id="paginationControls" class="mt-6 flex justify-between items-center">
+                    <div class="text-sm text-gray-600">
+                        Showing <span id="startIndex">0</span> to <span id="endIndex">0</span> of <span id="totalItems">0</span> expenses
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="prevPage" class="px-3 py-1 border rounded-lg hover:bg-gray-50 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Previous
+                        </button>
+                        <div id="pageNumbers" class="flex space-x-1">
+                            <!-- Page numbers will be inserted here -->
+                        </div>
+                        <button id="nextPage" class="px-3 py-1 border rounded-lg hover:bg-gray-50 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Next
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+
+let currentPage = 1;
+let itemsPerPage = parseInt(localStorage.getItem('itemsPerPage')) || 10;
+let allExpenses = [];
+
+window.addEventListener('DOMContentLoaded', function() {
+    // Set initial value for items per page select
+    const itemsPerPageSelect = document.getElementById('itemsPerPage');
+    if (itemsPerPageSelect) {
+        itemsPerPageSelect.value = itemsPerPage;
+    }
+});
+
+// Set initial value for items per page select
+document.getElementById('itemsPerPage').value = itemsPerPage;
+
+// Update items per page when changed
+document.getElementById('itemsPerPage').addEventListener('change', function(e) {
+    itemsPerPage = parseInt(e.target.value);
+    localStorage.setItem('itemsPerPage', itemsPerPage);
+    currentPage = 1; // Reset to first page
+    displayExpenses();
+});
+
         function showNotification(message, isError = false) {
             const div = document.createElement('div');
             div.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white ${
@@ -248,8 +302,14 @@
 
                 if (!response.data.expenses || response.data.expenses.length === 0) {
                     expensesList.innerHTML = '<p class="text-center text-gray-500">No expenses found</p>';
+                    hidePagination();
                     return;
                 }
+
+                allExpenses = response.data.expenses;
+                currentPage = 1;
+                displayExpenses();
+            
 
                 expensesList.innerHTML = response.data.expenses.map(expense => `
                     <div class="bg-white rounded-lg shadow-sm p-4">
@@ -273,8 +333,97 @@
             } catch (error) {
                 showNotification('Error loading expenses', true);
                 expensesList.innerHTML = '<p class="text-center text-red-500">Error loading expenses</p>';
+                hidePagination();
             }
         }
+
+        function displayExpenses() {
+            if (!allExpenses || allExpenses.length === 0) {
+        expensesList.innerHTML = '<p class="text-center text-gray-500">No expenses found</p>';
+        hidePagination();
+        return;
+    }
+    const totalPages = Math.ceil(allExpenses.length / itemsPerPage);
+    if (currentPage > totalPages) {
+        currentPage = 1; // Reset to first page if current page is out of bounds
+    }
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = Math.min(start + itemsPerPage, allExpenses.length);
+    const currentExpenses = allExpenses.slice(start, end);
+
+    expensesList.innerHTML = currentExpenses.map(expense => `
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-3">
+            <div class="flex justify-between items-start">
+                <div class="space-y-1">
+                    <p class="font-medium text-gray-800">${expense.description}</p>
+                    <p class="text-sm text-gray-500">${expense.category}</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="font-semibold text-gray-800">${formatAmount(expense.amount)}</span>
+                    <button onclick="deleteExpense(${expense.id})" 
+                        class="text-gray-400 hover:text-red-500 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    updatePagination(start, end, allExpenses.length, totalPages);
+}
+
+function updatePagination(start, end, total, totalPages) {
+    document.getElementById('startIndex').textContent = total === 0 ? 0 : start + 1;
+    document.getElementById('endIndex').textContent = end;
+    document.getElementById('totalItems').textContent = total;
+
+    const pageNumbers = document.getElementById('pageNumbers');
+    pageNumbers.innerHTML = '';
+
+    for (let i = 1; i <= totalPages; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = `px-3 py-1 border rounded-lg ${
+            i === currentPage 
+                ? 'bg-emerald-500 text-white' 
+                : 'hover:bg-gray-50 text-gray-700'
+        }`;
+        pageBtn.textContent = i;
+        pageBtn.onclick = () => {
+            currentPage = i;
+            displayExpenses();
+        };
+        pageNumbers.appendChild(pageBtn);
+    }
+
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    
+    prevBtn.disabled = currentPage === 1;
+    nextBtn.disabled = currentPage === totalPages;
+
+    prevBtn.onclick = () => {
+        if (currentPage > 1) {
+            currentPage--;
+            displayExpenses();
+        }
+    };
+
+    nextBtn.onclick = () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            displayExpenses();
+        }
+    };
+
+    document.getElementById('paginationControls').style.display = total > 0 ? 'flex' : 'none';
+}
+
+function hidePagination() {
+    document.getElementById('paginationControls').style.display = 'none';
+}
 
         async function deleteExpense(expenseId) {
             if (!confirm('Are you sure you want to delete this expense?')) {
@@ -332,7 +481,18 @@
         if (!token) {
             window.location.href = '/login.html';
         } else {
+
             // Initialize the page
+            window.addEventListener('DOMContentLoaded', async function (){
+                try{
+                    await checkPremiumStatus();
+                    await loadExpenses();
+                } catch (error) {
+                    console.log('Error initializing page:', error);
+                    showNotification('Error initializing page', true);
+            }
+        });
+            initializePage();
             checkPremiumStatus();
             loadExpenses();
         }
