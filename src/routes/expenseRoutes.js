@@ -12,4 +12,7 @@ router.get('/user', authenticateToken, expenseController.getExpenses);
 // Route for deleting an expense
 router.delete('/:id', authenticateToken, expenseController.deleteExpense);
 
+router.get('/download', authenticateToken, expenseController.downloadExpenses);
+router.get('download/history', authenticateToken, expenseController.getDownloadHistory);
+
 module.exports = router;

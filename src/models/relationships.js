@@ -2,6 +2,7 @@ const User = require('./User');
 const Expense = require('./Expense');
 const Order = require('./Order');
 const ForgotPasswordRequest = require('./ForgotPasswordRequest');
+const DownloadedFile = require('./DownloadedFile');
 
 // Define relationships
 User.hasMany(Expense, { foreignKey: 'userId' });
@@ -15,4 +16,8 @@ Order.belongsTo(User, { foreignKey: 'userId' });
 User.hasMany(ForgotPasswordRequest, { foreignKey: 'userId' });
 ForgotPasswordRequest.belongsTo(User, { foreignKey: 'userId' });
 
-module.exports = { User, Expense, Order, ForgotPasswordRequest };
+// Add DownloadedFile relationship
+User.hasMany(DownloadedFile, { foreignKey: 'userId' });
+DownloadedFile.belongsTo(User, { foreignKey: 'userId' });
+
+module.exports = { User, Expense, Order, ForgotPasswordRequest, DownloadedFile };

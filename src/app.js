@@ -6,6 +6,8 @@ const sequelize = require('./database/sequelize');
 const paymentRoutes = require('./routes/paymentRoutes');
 const premiumRoutes = require('./routes/premiumRoutes');
 const passwordRoutes = require('./routes/passwordRoutes');
+const compression = require('compression');
+
 const path = require('path');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -18,6 +20,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, '../public')));
+app.use(compression());
 
 app.get('/password/resetpassword/:token', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/reset-password.html'));

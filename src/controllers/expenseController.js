@@ -74,3 +74,60 @@ exports.getExpenses = async (req, res) => {
         return res.status(500).json({ message: 'Error fetching expenses' });
     }
 };
+
+exports.downloadExpenses = async (req, res) => {
+    try {
+        // Check premium status
+        const user = await User.findByPk(req.user.id);
+        if (!user.isPremium) {
+            return res.status(401).json({ message: 'Premium feature only' });
+        }
+
+        // Get user's expenses
+        const expenses = await Expense.findAll({
+            where: { userId: req.user.id },
+            order: [['createdAt', 'DESC']]
+        });
+
+        // Create CSV content
+        const csvContent = [
+            ['Date', 'Description', 'Category', 'Amount'].join(','),
+            ...expenses.map(expense => [
+                new Date(expense.createdAt).toLocaleDateString(),
+                expense.description,
+                expense.category,
+                expense.amount
+            ].join(','))
+        ].join('\n');
+
+        // Generate filename
+        const fileName = `expenses_${req.user.id}_${Date.now()}.csv`;
+
+        // Save file URL in database
+        const downloadUrl = await saveToS3(csvContent, fileName); // Implement this function
+        await DownloadedFile.create({
+            userId: req.user.id,
+            fileUrl: downloadUrl,
+            fileName
+        });
+
+        res.json({ fileUrl: downloadUrl });
+    } catch (error) {
+        console.error('Download error:', error);
+        res.status(500).json({ message: 'Error generating download' });
+    }
+};
+
+exports.getDownloadHistory = async (req, res) => {
+    try {
+        const downloads = await DownloadedFile.findAll({
+            where: { userId: req.user.id },
+            order: [['createdAt', 'DESC']]
+        });
+
+        res.json({ downloads });
+    } catch (error) {
+        console.error('Error fetching download history:', error);
+        res.status(500).json({ message: 'Error fetching download history' });
+    }
+};
