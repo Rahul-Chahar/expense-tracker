@@ -39,7 +39,7 @@ async function syncDatabase() {
             );
         }
 
-        await sequelize.sync({ alter: false });
+        await sequelize.sync({ alter: true });
         console.log('Database synced successfully');
     } catch (error) {
         console.error('Database sync error:', error);
