@@ -4,6 +4,6 @@ const premiumController = require('../controllers/premiumController');
 const authenticateToken = require('../middlewares/auth');
 
 router.get('/status', authenticateToken, premiumController.getPremiumStatus);
-router.get('/showLeaderboard', authenticateToken, premiumController.getLeaderboard);
+router.get('/leaderboard', authenticateToken, premiumController.getLeaderboard);
 
 module.exports = router;

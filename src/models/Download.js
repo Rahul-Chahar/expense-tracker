@@ -1,7 +1,8 @@
+// models/Download.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../database/sequelize');
 
-const DownloadedFile = sequelize.define('DownloadedFile', {
+const Download = sequelize.define('Download', {
     id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
@@ -18,7 +19,11 @@ const DownloadedFile = sequelize.define('DownloadedFile', {
     fileName: {
         type: DataTypes.STRING,
         allowNull: false
+    },
+    downloadedAt: {
+        type: DataTypes.DATE,
+        allowNull: false
     }
-});
+ });
 
-module.exports = DownloadedFile;
+module.exports = Download;
