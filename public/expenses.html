@@ -315,7 +315,7 @@ async function loadExpenses() {
 function displayExpenses() {
     const expensesList = document.getElementById("expensesList");
     if (!allExpenses?.length) {
-        expensesList.innerHTML = '<p class="text-center text-gray-500">No transactions found</p>';
+        expensesList.innerHTML = '<p class="text-center text-gray-500">No Expenses found</p>';
         hidePagination();
         return;
     }
@@ -416,9 +416,9 @@ async function deleteExpense(expenseId) {
             headers: { Authorization: `Bearer ${token}` }
         });
         await loadExpenses(); // Reload expenses after successful delete
-        showNotification("Transaction deleted successfully");
+        showNotification("Expense deleted successfully");
     } catch (error) {
-        showNotification(error.response?.data?.message || 'Error deleting transaction', true);
+        showNotification(error.response?.data?.message || 'Error deleting expense', true);
     }
 }
 
