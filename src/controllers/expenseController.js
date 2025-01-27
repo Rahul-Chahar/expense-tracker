@@ -12,20 +12,14 @@ exports.addExpense = async (req, res) => {
             return res.status(400).json({ message: 'Invalid amount' });
         }
 
-        await Expense.create({
-            userId, amount, description, category, type
-        }, { transaction: t });
+        await Expense.create({ userId, amount, description, category, type }, { transaction: t });
 
         if (type === 'expense') {
             const totalExpenses = await Expense.sum('amount', {
                 where: { userId, type: 'expense' },
                 transaction: t
             }) || 0;
-
-            await User.update(
-                { totalExpenses },
-                { where: { id: userId }, transaction: t }
-            );
+            await User.update({ totalExpenses }, { where: { id: userId }, transaction: t });
         }
 
         await t.commit();
@@ -39,11 +33,8 @@ exports.addExpense = async (req, res) => {
 exports.deleteExpense = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const { id } = req.params;
-        const userId = req.user.id;
-
         const expense = await Expense.findOne({
-            where: { id, userId },
+            where: { id: req.params.id, userId: req.user.id },
             transaction: t
         });
 
@@ -56,14 +47,10 @@ exports.deleteExpense = async (req, res) => {
 
         if (expense.type === 'expense') {
             const totalExpenses = await Expense.sum('amount', {
-                where: { userId, type: 'expense' },
+                where: { userId: req.user.id, type: 'expense' },
                 transaction: t
             }) || 0;
-
-            await User.update(
-                { totalExpenses },
-                { where: { id: userId }, transaction: t }
-            );
+            await User.update({ totalExpenses }, { where: { id: req.user.id }, transaction: t });
         }
 
         await t.commit();
@@ -88,16 +75,11 @@ exports.getExpenses = async (req, res) => {
 
 exports.getReport = async (req, res) => {
     try {
-        const { type } = req.params;
-        const userId = req.user.id;
-        
-        const user = await User.findByPk(userId);
-        if (!user.isPremium) {
-            return res.status(403).json({ message: 'Premium feature only' });
-        }
+        const user = await User.findByPk(req.user.id);
+        if (!user.isPremium) return res.status(403).json({ message: 'Premium feature only' });
 
         let startDate = new Date();
-        switch(type) {
+        switch(req.params.type) {
             case 'daily':
                 startDate.setHours(0, 0, 0, 0);
                 break;
@@ -113,7 +95,7 @@ exports.getReport = async (req, res) => {
 
         const transactions = await Expense.findAll({
             where: {
-                userId,
+                userId: req.user.id,
                 createdAt: { [Op.gte]: startDate }
             },
             order: [['createdAt', 'DESC']]
@@ -121,23 +103,15 @@ exports.getReport = async (req, res) => {
 
         res.json({ 
             transactions,
-            summary: calculateSummary(transactions)
+            summary: transactions.reduce((s, t) => {
+                t.type === 'income' ? s.totalIncome += t.amount : s.totalExpense += t.amount;
+                s.savings = s.totalIncome - s.totalExpense;
+                return s;
+            }, { totalIncome: 0, totalExpense: 0, savings: 0 })
         });
     } catch (error) {
         res.status(500).json({ message: 'Error generating report' });
     }
 };
-
-function calculateSummary(transactions) {
-    return transactions.reduce((summary, t) => {
-        if(t.type === 'income') {
-            summary.totalIncome += t.amount;
-        } else {
-            summary.totalExpense += t.amount;
-        }
-        summary.savings = summary.totalIncome - summary.totalExpense;
-        return summary;
-    }, { totalIncome: 0, totalExpense: 0, savings: 0 });
-}
 
 module.exports = exports;

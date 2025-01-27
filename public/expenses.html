@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -19,15 +20,9 @@
                     <h1 class="text-2xl font-bold text-gray-800">Expense Tracker</h1>
                 </div>
                 <div class="flex items-center space-x-4" id="navButtons">
-                    <button id="reportBtn" class="hidden bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700">
-                        View Reports
-                    </button>
-                    <button id="buyPremiumBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
-                        <span>Buy Premium</span>
-                    </button>
-                    <button onclick="logout()" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-200">
-                        Logout
-                    </button>
+                    <button id="reportBtn" class="hidden bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700">View Reports</button>
+                    <button id="buyPremiumBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">Buy Premium</button>
+                    <button onclick="logout()" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-200">Logout</button>
                 </div>
             </div>
         </div>
@@ -73,9 +68,7 @@
                             <option value="Other">📦 Other</option>
                         </select>
                     </div>
-                    <button type="submit" class="w-full bg-emerald-600 text-white py-2 px-4 rounded-lg hover:bg-emerald-700">
-                        Add Expenses
-                    </button>
+                    <button type="submit" class="w-full bg-emerald-600 text-white py-2 px-4 rounded-lg hover:bg-emerald-700">Add Expenses</button>
                 </form>
             </div>
 
@@ -89,30 +82,18 @@
                             <option value="5">5</option>
                             <option value="10">10</option>
                             <option value="20">20</option>
-                            <option value="30">30</option>
-                            <option value="40">40</option>
                         </select>
                     </div>
                 </div>
-                <div id="expensesList" class="space-y-3">
-                    <!-- Expenses will be loaded here -->
-                </div>
+                <div id="expensesList" class="space-y-3"></div>
                 <div id="paginationControls" class="mt-6 flex justify-between items-center">
                     <div class="text-sm text-gray-600">
-                        Showing <span id="startIndex">0</span> to
-                        <span id="endIndex">0</span> of
-                        <span id="totalItems">0</span> Expenses
+                        Showing <span id="startIndex">0</span> to <span id="endIndex">0</span> of <span id="totalItems">0</span> Expenses
                     </div>
                     <div class="flex space-x-2">
-                        <button id="prevPage" class="px-3 py-1 border rounded-lg hover:bg-gray-50 text-gray-700">
-                            Previous
-                        </button>
-                        <div id="pageNumbers" class="flex space-x-1">
-                            <!-- Page numbers will be inserted here -->
-                        </div>
-                        <button id="nextPage" class="px-3 py-1 border rounded-lg hover:bg-gray-50 text-gray-700">
-                            Next
-                        </button>
+                        <button id="prevPage" class="px-3 py-1 border rounded-lg hover:bg-gray-50 text-gray-700">Previous</button>
+                        <div id="pageNumbers"></div>
+                        <button id="nextPage" class="px-3 py-1 border rounded-lg hover:bg-gray-50 text-gray-700">Next</button>
                     </div>
                 </div>
             </div>
@@ -137,9 +118,7 @@
                     <option value="monthly">Monthly Report</option>
                     <option value="yearly">Yearly Report</option>
                 </select>
-                <button id="downloadReport" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                    Download Report
-                </button>
+                <button id="downloadReport" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Download Report</button>
             </div>
 
             <div class="overflow-x-auto">
