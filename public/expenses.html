@@ -40,6 +40,8 @@
                             <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">₹</span>
                             <input type="number" id="amount" name="amount" required class="w-full pl-8 pr-4 py-2 border rounded-md"/>
                         </div>
+                        <!-- Form Error Display -->
+                        <div id="formErrorDisplay" class="text-red-500 text-sm mt-1 hidden"></div>
                     </div>
                     <div>
                         <label for="type" class="block text-sm font-medium text-gray-700 mb-1">Type</label>
@@ -118,7 +120,11 @@
                     <option value="monthly">Monthly Report</option>
                     <option value="yearly">Yearly Report</option>
                 </select>
-                <button id="downloadReport" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Download Report</button>
+                <button id="downloadBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Download Report</button>
+            </div>
+            <div id="downloadHistory" class="mt-8 hidden">
+                <h3 class="text-xl font-bold mb-4">Download History</h3>
+                <div id="historyList" class="space-y-3"></div>
             </div>
 
             <div class="overflow-x-auto">
@@ -148,529 +154,568 @@
             </div>
         </div>
     </div>
+
     <script>
- // Global Variables
-// Global Variables
-let currentPage = 1;
-let itemsPerPage = parseInt(localStorage.getItem("itemsPerPage")) || 10;
-let allExpenses = [];
-let isPremiumUser = false;
-const token = localStorage.getItem("token");
+    // Global Variables
+    let currentPage = 1;
+    let itemsPerPage = parseInt(localStorage.getItem("itemsPerPage")) || 10;
+    let allExpenses = [];
+    let isPremiumUser = false;
+    const token = localStorage.getItem("token");
 
-// Initialize the page
-window.addEventListener("DOMContentLoaded", async function () {
-    if (!token) {
-        window.location.href = "/login.html";
-        return;
-    }
-
-    setupEventListeners();
-
-    try {
-        await Promise.all([
-            checkPremiumStatus(),
-            loadExpenses()
-        ]);
-    } catch (error) {
-        console.error("Error initializing page:", error);
-        showNotification("Error initializing page", true);
-    }
-});
-
-// Utility Functions
-function showNotification(message, isError = false) {
-    const div = document.createElement("div");
-    div.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white ${
-        isError ? "bg-red-500" : "bg-emerald-500"
-    } shadow-lg transform transition-all duration-300 z-50`;
-    div.textContent = message;
-    document.body.appendChild(div);
-
-    setTimeout(() => {
-        div.style.transform = "translateY(-150%)";
-        setTimeout(() => div.remove(), 300);
-    }, isError ? 5000 : 3000);
-}
-
-function setupEventListeners() {
-    // Items per page listener
-    const itemsPerPageSelect = document.getElementById("itemsPerPage");
-    if (itemsPerPageSelect) {
-        itemsPerPageSelect.value = itemsPerPage;
-        itemsPerPageSelect.addEventListener("change", function (e) {
-            itemsPerPage = parseInt(e.target.value);
-            localStorage.setItem("itemsPerPage", itemsPerPage);
-            currentPage = 1;
-            displayExpenses();
-        });
-    }
-    async function updateLeaderboard() {
-    if (!isPremiumUser) return;
-
-    try {
-        const response = await axios.get("/api/premium/leaderboard", {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-
-        // Update leaderboard display if modal is open
-        if (document.getElementById('leaderboardContent')) {
-            renderLeaderboard(response.data);
-        }
-    } catch (error) {
-        console.error('Leaderboard update error:', error);
-    }
-}
-
-    // Form submission
-    const expenseForm = document.getElementById("expenseForm");
-    if (expenseForm) {
-        expenseForm.addEventListener("submit", handleFormSubmit);
-    }
-
-    // Buy Premium Button
-    const buyPremiumBtn = document.getElementById("buyPremiumBtn");
-    if (buyPremiumBtn) {
-        buyPremiumBtn.addEventListener("click", initiatePayment);
-    }
-
-    // Report type change
-    const reportType = document.getElementById("reportType");
-    if (reportType) {
-        reportType.addEventListener("change", loadReport);
-    }
-}
-
-async function handleFormSubmit(event) {
-    event.preventDefault();
-    const submitButton = event.target.querySelector('button[type="submit"]');
-    
-    try {
-        submitButton.disabled = true;
-        const data = {
-            amount: parseFloat(document.getElementById("amount").value),
-            type: document.getElementById("type").value,
-            description: document.getElementById("description").value.trim(),
-            category: document.getElementById("category").value
-        };
-
-        if (isNaN(data.amount) || data.amount <= 0) {
-            throw new Error('Please enter a valid amount');
+    // Initialize the page
+    window.addEventListener("DOMContentLoaded", async function () {
+        if (!token) {
+            window.location.href = "/login.html";
+            return;
         }
 
-        const response = await axios.post("/api/expenses/add", data, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+        setupEventListeners();
 
-        event.target.reset();
-        await loadExpenses(); // Reload expenses after successful add
-        showNotification(`${data.type === 'income' ? 'Income' : 'Expense'} added successfully`);
-    } catch (error) {
-        showNotification(error.response?.data?.message || error.message, true);
-    } finally {
-        submitButton.disabled = false;
+        try {
+            await Promise.all([
+                checkPremiumStatus(),
+                loadExpenses(),
+                loadDownloadHistory()
+            ]);
+        } catch (error) {
+            console.error("Error initializing page:", error);
+            showNotification("Error initializing page", true);
+        }
+    });
+
+    // Utility Functions
+    function showNotification(message, isError = false) {
+        const div = document.createElement("div");
+        div.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white ${
+            isError ? "bg-red-500" : "bg-emerald-500"
+        } shadow-lg transform transition-all duration-300 z-50`;
+        div.textContent = message;
+        document.body.appendChild(div);
+
+        setTimeout(() => {
+            div.style.transform = "translateY(-150%)";
+            setTimeout(() => div.remove(), 300);
+        }, isError ? 5000 : 3000);
     }
-}
 
+    function setupEventListeners() {
+        // Items per page listener
+        const itemsPerPageSelect = document.getElementById("itemsPerPage");
+        if (itemsPerPageSelect) {
+            itemsPerPageSelect.value = itemsPerPage;
+            itemsPerPageSelect.addEventListener("change", function (e) {
+                itemsPerPage = parseInt(e.target.value);
+                localStorage.setItem("itemsPerPage", itemsPerPage);
+                currentPage = 1;
+                displayExpenses();
+            });
+        }
 
-function formatAmount(amount) {
-    return new Intl.NumberFormat("en-IN", {
-        style: "currency",
-        currency: "INR",
-    }).format(amount);
-}
+        // Form submission
+        const expenseForm = document.getElementById("expenseForm");
+        if (expenseForm) {
+            expenseForm.addEventListener("submit", handleFormSubmit);
+        }
 
-async function loadExpenses() {
-    try {
-        // Clear current expenses
-        allExpenses = [];
-        
-        // Add loading state
-        document.getElementById("expensesList").innerHTML = 
-            '<p class="text-center">Loading...</p>';
+        // Buy Premium Button
+        const buyPremiumBtn = document.getElementById("buyPremiumBtn");
+        if (buyPremiumBtn) {
+            buyPremiumBtn.addEventListener("click", initiatePayment);
+        }
 
-        const response = await axios.get("/api/expenses/user", {
-            headers: { 
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'
+        // Report type change
+        const reportType = document.getElementById("reportType");
+        if (reportType) {
+            reportType.addEventListener("change", loadReport);
+        }
+
+        // Download Report Button
+        const downloadBtn = document.getElementById("downloadBtn");
+        if (downloadBtn) {
+            downloadBtn.addEventListener("click", async () => {
+                if (!isPremiumUser) {
+                    showNotification("This feature is only available for premium users", true);
+                    return;
+                }
+
+                try {
+                    const reportType = document.getElementById('reportType')?.value || 'monthly'; // Get selected report type
+                    const response = await axios.get(`/api/expenses/download?type=${reportType}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+
+                    if (response.data.fileUrl) {
+                        window.open(response.data.fileUrl, '_blank');
+                        loadDownloadHistory();
+                        showNotification("Report downloaded successfully!");
+                    } else {
+                        throw new Error("File URL not found in response.");
+                    }
+                } catch (error) {
+                    console.error('Error downloading expenses:', error);
+                    const errorMessage = error.response?.data?.message || error.message;
+                    showNotification(`Error downloading expenses: ${errorMessage}`, true);
+                }
+            });
+        }
+
+        // Leaderboard Button is created dynamically for premium users
+    }
+
+    async function handleFormSubmit(event) {
+        event.preventDefault();
+        const submitButton = event.target.querySelector('button[type="submit"]');
+        const formErrorDisplay = document.getElementById('formErrorDisplay');
+
+        try {
+            submitButton.disabled = true;
+            formErrorDisplay.classList.add('hidden');
+            formErrorDisplay.textContent = '';
+
+            const data = {
+                amount: parseFloat(document.getElementById("amount").value),
+                type: document.getElementById("type").value,
+                description: document.getElementById("description").value.trim(),
+                category: document.getElementById("category").value
+            };
+
+            if (isNaN(data.amount) || data.amount <= 0) {
+                throw new Error('Please enter a valid amount');
             }
-        });
 
-        if (!response.data || !response.data.expenses) {
-            throw new Error('Invalid response format');
+            const response = await axios.post("/api/expenses/add", data, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            event.target.reset();
+            await loadExpenses(); // Reload expenses after successful add
+            showNotification(`${data.type === 'income' ? 'Income' : 'Expense'} added successfully`);
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || error.message;
+            showNotification(errorMessage, true);
+            // Display form-specific error
+            if (formErrorDisplay) {
+                formErrorDisplay.textContent = errorMessage;
+                formErrorDisplay.classList.remove('hidden');
+            }
+        } finally {
+            submitButton.disabled = false;
+        }
+    }
+
+    function formatAmount(amount) {
+        return new Intl.NumberFormat("en-IN", {
+            style: "currency",
+            currency: "INR",
+        }).format(amount);
+    }
+
+    async function loadExpenses() {
+        try {
+            // Clear current expenses
+            allExpenses = [];
+
+            // Add loading state
+            document.getElementById("expensesList").innerHTML = 
+                '<p class="text-center">Loading...</p>';
+
+            const response = await axios.get("/api/expenses/user", {
+                headers: { 
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.data || !response.data.expenses) {
+                throw new Error('Invalid response format');
+            }
+
+            allExpenses = response.data.expenses;
+            allExpenses.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            displayExpenses();
+
+        } catch (error) {
+            console.error('Load expenses error:', error);
+            document.getElementById("expensesList").innerHTML =
+                `<p class="text-center text-red-500">Error: ${error.response?.data?.message || error.message}</p>`;
+            hidePagination();
+        }
+    }
+
+    function displayExpenses() {
+        const expensesList = document.getElementById("expensesList");
+        if (!allExpenses?.length) {
+            expensesList.innerHTML = '<p class="text-center text-gray-500">No Expenses found</p>';
+            hidePagination();
+            return;
         }
 
-        allExpenses = response.data.expenses;
-        allExpenses.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        
-        displayExpenses();
+        const totalPages = Math.ceil(allExpenses.length / itemsPerPage);
+        currentPage = Math.min(currentPage, totalPages);
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = Math.min(start + itemsPerPage, allExpenses.length);
+        const currentExpenses = allExpenses.slice(start, end);
 
-    } catch (error) {
-        console.error('Load expenses error:', error);
-        document.getElementById("expensesList").innerHTML =
-            `<p class="text-center text-red-500">Error: ${error.response?.data?.message || error.message}</p>`;
-        hidePagination();
-    }
-}
-
-function displayExpenses() {
-    const expensesList = document.getElementById("expensesList");
-    if (!allExpenses?.length) {
-        expensesList.innerHTML = '<p class="text-center text-gray-500">No Expenses found</p>';
-        hidePagination();
-        return;
-    }
-
-    const totalPages = Math.ceil(allExpenses.length / itemsPerPage);
-    currentPage = Math.min(currentPage, totalPages);
-    const start = (currentPage - 1) * itemsPerPage;
-    const end = Math.min(start + itemsPerPage, allExpenses.length);
-    const currentExpenses = allExpenses.slice(start, end);
-
-    expensesList.innerHTML = currentExpenses.map(expense => `
-        <div class="bg-white rounded-lg shadow-sm p-4 mb-3">
-            <div class="flex justify-between items-start">
-                <div class="space-y-1">
-                    <p class="font-medium text-gray-800">${expense.description}</p>
-                    <p class="text-sm text-gray-500">${expense.category}</p>
-                    <p class="text-xs text-gray-400">${new Date(expense.createdAt).toLocaleDateString()}</p>
-                </div>
-                <div class="flex items-center gap-4">
-                    <span class="font-semibold ${expense.type === 'income' ? 'text-green-600' : 'text-red-600'}">
-                        ${expense.type === 'income' ? '+' : '-'}${formatAmount(expense.amount)}
-                    </span>
-                    <button onclick="deleteExpense(${expense.id})" 
-                        class="text-gray-400 hover:text-red-500">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-    `).join("");
-
-    updatePagination(start, end, allExpenses.length, totalPages);
-}
-
-function updatePagination(start, end, total, totalPages) {
-    if (total === 0) {
-        hidePagination();
-        return;
-    }
-
-    document.getElementById("startIndex").textContent = start + 1;
-    document.getElementById("endIndex").textContent = end;
-    document.getElementById("totalItems").textContent = total;
-
-    const pageNumbers = document.getElementById("pageNumbers");
-    pageNumbers.innerHTML = "";
-
-    for (let i = 1; i <= totalPages; i++) {
-        const pageBtn = document.createElement("button");
-        pageBtn.className = `px-3 py-1 border rounded-lg ${
-            i === currentPage
-                ? "bg-emerald-500 text-white"
-                : "hover:bg-gray-50 text-gray-700"
-        }`;
-        pageBtn.textContent = i;
-        pageBtn.onclick = () => {
-            currentPage = i;
-            displayExpenses();
-        };
-        pageNumbers.appendChild(pageBtn);
-    }
-
-    const prevBtn = document.getElementById("prevPage");
-    const nextBtn = document.getElementById("nextPage");
-
-    prevBtn.disabled = currentPage === 1;
-    nextBtn.disabled = currentPage === totalPages;
-
-    prevBtn.onclick = () => {
-        if (currentPage > 1) {
-            currentPage--;
-            displayExpenses();
-        }
-    };
-
-    nextBtn.onclick = () => {
-        if (currentPage < totalPages) {
-            currentPage++;
-            displayExpenses();
-        }
-    };
-
-    document.getElementById("paginationControls").style.display = "flex";
-}
-
-function hidePagination() {
-    document.getElementById("paginationControls").style.display = "none";
-}
-
-async function deleteExpense(expenseId) {
-    if (!confirm("Are you sure?")) return;
-
-    try {
-        await axios.delete(`/api/expenses/${expenseId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        await loadExpenses(); // Reload expenses after successful delete
-        showNotification("Expense deleted successfully");
-    } catch (error) {
-        showNotification(error.response?.data?.message || 'Error deleting expense', true);
-    }
-}
-
-async function showLeaderboard() {
-    if (!isPremiumUser) {
-        showNotification("Leaderboard is only available for premium users", true);
-        return;
-    }
-
-    try {
-        const response = await axios.get("/api/premium/leaderboard", {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const leaderboardHTML = `
-            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div class="bg-white p-6 rounded-lg max-w-md w-full m-4">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold">Expense Leaderboard</h2>
-                        <button onclick="this.closest('.fixed').remove()" 
-                            class="text-gray-600 hover:text-gray-700">
+        expensesList.innerHTML = currentExpenses.map(expense => `
+            <div class="bg-white rounded-lg shadow-sm p-4 mb-3">
+                <div class="flex justify-between items-start">
+                    <div class="space-y-1">
+                        <p class="font-medium text-gray-800">${expense.description}</p>
+                        <p class="text-sm text-gray-500">${expense.category}</p>
+                        <p class="text-xs text-gray-400">${new Date(expense.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="font-semibold ${expense.type === 'income' ? 'text-green-600' : 'text-red-600'}">
+                            ${expense.type === 'income' ? '+' : '-'}${formatAmount(expense.amount)}
+                        </span>
+                        <button onclick="deleteExpense('${expense.id || expense._id}')" 
+                            class="text-gray-400 hover:text-red-500">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                             </svg>
                         </button>
                     </div>
-                    <div class="max-h-96 overflow-y-auto">
-                        ${response.data
-                            .map(
-                                (user, index) => `
-                            <div class="flex justify-between items-center py-3 border-b">
-                                <div class="flex items-center">
-                                    <span class="text-lg font-bold mr-2">${index + 1}.</span>
-                                    <span class="font-medium">${user.name || "Anonymous"}</span>
-                                </div>
-                                <span class="font-semibold">${formatAmount(user.totalExpenses)}</span>
-                            </div>
-                        `
-                            )
-                            .join("")}
-                    </div>
-                    <button onclick="this.closest('.fixed').remove()" 
-                        class="mt-4 w-full bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 transition-colors">
-                        Close
-                    </button>
                 </div>
             </div>
-        `;
-        document.body.insertAdjacentHTML("beforeend", leaderboardHTML);
-    } catch (error) {
-        showNotification("Error fetching leaderboard", true);
-        console.error(error);
+        `).join("");
+
+        updatePagination(start, end, allExpenses.length, totalPages);
     }
-}
-function createErrorDisplay() {
-    const errorDisplay = document.createElement('div');
-    errorDisplay.id = 'formErrorDisplay';
-    errorDisplay.className = 'text-red-500 text-sm mb-4';
-    document.getElementById('expenseForm').insertBefore(errorDisplay, document.getElementById('expenseForm').firstChild);
-    return errorDisplay;
-}
 
-async function checkPremiumStatus() {
-    try {
-        if (!token) return false;
-
-        const response = await axios.get("/api/premium/status", {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-
-        isPremiumUser = response.data.isPremium;
-        updateUIForPremiumUser(isPremiumUser);
-
-        return isPremiumUser;
-    } catch (error) {
-        console.error("Error checking premium status:", error);
-        showNotification("Error checking premium status", true);
-        return false;
-    }
-}
-
-function updateUIForPremiumUser(isPremium) {
-    const buyPremiumBtn = document.getElementById("buyPremiumBtn");
-    const reportBtn = document.getElementById("reportBtn");
-    const navButtons = document.getElementById("navButtons");
-
-    if (isPremium) {
-        // Premium User UI
-        if (buyPremiumBtn) {
-            buyPremiumBtn.innerHTML = "👑 Premium User";
-            buyPremiumBtn.disabled = true;
-            buyPremiumBtn.className = "bg-yellow-600 text-white px-4 py-2 rounded-lg cursor-default";
+    function updatePagination(start, end, total, totalPages) {
+        if (total === 0) {
+            hidePagination();
+            return;
         }
 
-        if (reportBtn) {
-            reportBtn.classList.remove("hidden");
-            reportBtn.addEventListener('click', openReportModal);
+        document.getElementById("startIndex").textContent = start + 1;
+        document.getElementById("endIndex").textContent = end;
+        document.getElementById("totalItems").textContent = total;
+
+        const pageNumbers = document.getElementById("pageNumbers");
+        pageNumbers.innerHTML = "";
+
+        for (let i = 1; i <= totalPages; i++) {
+            const pageBtn = document.createElement("button");
+            pageBtn.className = `px-3 py-1 border rounded-lg ${
+                i === currentPage
+                    ? "bg-emerald-500 text-white"
+                    : "hover:bg-gray-50 text-gray-700"
+            }`;
+            pageBtn.textContent = i;
+            pageBtn.onclick = () => {
+                currentPage = i;
+                displayExpenses();
+            };
+            pageNumbers.appendChild(pageBtn);
         }
 
-        // Add Leaderboard Button
-        const leaderboardBtn = document.createElement("button");
-        leaderboardBtn.id = "leaderboardBtn";
-        leaderboardBtn.className = "bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700";
-        leaderboardBtn.innerHTML = "🏆 Leaderboard";
-        leaderboardBtn.addEventListener('click', showLeaderboard);
-        
-        if (navButtons) {
-            navButtons.insertBefore(leaderboardBtn, buyPremiumBtn);
-        }
-    } else {
-        // Non-Premium User UI
-        if (reportBtn) {
-            reportBtn.classList.add("hidden");
-        }
-    }
-}
+        const prevBtn = document.getElementById("prevPage");
+        const nextBtn = document.getElementById("nextPage");
 
-async function initiatePayment() {
-    try {
-        const response = await axios.post(
-            "/api/payments/create-order",
-            {},
-            {
-                headers: { Authorization: `Bearer ${token}` },
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage === totalPages;
+
+        prevBtn.onclick = () => {
+            if (currentPage > 1) {
+                currentPage--;
+                displayExpenses();
             }
-        );
-
-        const options = {
-            key: response.data.key_id,
-            order_id: response.data.order_id,
-            handler: async function (response) {
-                try {
-                    await axios.post(
-                        "/api/payments/update-status",
-                        {
-                            payment_id: response.razorpay_payment_id,
-                            order_id: response.razorpay_order_id,
-                            status: "SUCCESSFUL",
-                        },
-                        {
-                            headers: { Authorization: `Bearer ${token}` },
-                        }
-                    );
-
-                    showNotification("Payment successful! You are now a premium member!");
-                    await checkPremiumStatus();
-                } catch (error) {
-                    showNotification("Error processing payment", true);
-                    console.error(error);
-                }
-            },
         };
 
-        const rzp = new Razorpay(options);
-        rzp.open();
-    } catch (error) {
-        showNotification("Error initiating payment", true);
-        console.error(error);
-    }
-}
+        nextBtn.onclick = () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                displayExpenses();
+            }
+        };
 
-function openReportModal() {
-    const reportModal = document.getElementById('reportModal');
-    if (reportModal) {
-        reportModal.classList.remove('hidden');
-        loadReport();
-    }
-}
-
-function closeReportModal() {
-    const reportModal = document.getElementById('reportModal');
-    if (reportModal) {
-        reportModal.classList.add('hidden');
-    }
-}
-
-async function loadReport() {
-    if (!isPremiumUser) {
-        showNotification("This feature is only available for premium users", true);
-        return;
+        document.getElementById("paginationControls").style.display = "flex";
     }
 
-    const reportType = document.getElementById('reportType')?.value || 'monthly';
-    try {
-        const response = await axios.get(`/api/expenses/report/${reportType}`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        renderReport(response.data.transactions);
-    } catch (error) {
-        showNotification('Error loading report', true);
-        console.error(error);
-    }
-}
+    async function deleteExpense(expenseId) {
+        if (!confirm("Are you sure you want to delete this expense?")) return;
 
-function renderReport(transactions) {
-    let totalIncome = 0;
-    let totalExpense = 0;
-    
-    const reportRows = transactions.map(transaction => {
-        if (transaction.type === 'income') {
-            totalIncome += parseFloat(transaction.amount);
-        } else {
-            totalExpense += parseFloat(transaction.amount);
+        try {
+            await axios.delete(`/api/expenses/${expenseId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            await loadExpenses(); // Reload expenses after successful delete
+            showNotification("Expense deleted successfully");
+        } catch (error) {
+            showNotification(error.response?.data?.message || 'Error deleting expense', true);
         }
-        
-        // Fix date formatting
-        const date = new Date(transaction.createdAt).toLocaleDateString('en-IN', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-        
-        return `
-            <tr class="border-b hover:bg-gray-50">
-                <td class="p-3">${date}</td>
-                <td class="p-3">${transaction.description}</td>
-                <td class="p-3">${transaction.category}</td>
-                <td class="p-3 text-right">${transaction.type === 'income' ? formatAmount(transaction.amount) : ''}</td>
-                <td class="p-3 text-right">${transaction.type === 'expense' ? formatAmount(transaction.amount) : ''}</td>
-            </tr>
-        `;
-    }).join('');
-
-    document.getElementById('reportData').innerHTML = reportRows;
-    document.getElementById('totalIncome').textContent = formatAmount(totalIncome);
-    document.getElementById('totalExpense').textContent = formatAmount(totalExpense);
-    document.getElementById('totalSavings').textContent = formatAmount(totalIncome - totalExpense);
-}
-
-function logout() {
-    localStorage.removeItem("token");
-    window.location.href = "/login.html";
-}
-
-// Event Listeners for Report Modal
-document.getElementById('reportType')?.addEventListener('change', loadReport);
-document.getElementById('downloadReport')?.addEventListener('click', async () => {
-    if (!isPremiumUser) {
-        showNotification("This feature is only available for premium users", true);
-        return;
     }
 
-    try {
-        const response = await axios.get('/api/expenses/download', {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        window.open(response.data.fileUrl, '_blank');
-    } catch (error) {
-        showNotification('Error downloading report', true);
-        console.error(error);
+    async function showLeaderboard() {
+        if (!isPremiumUser) {
+            showNotification("Leaderboard is only available for premium users", true);
+            return;
+        }
+
+        try {
+            const response = await axios.get("/api/premium/leaderboard", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const leaderboardHTML = `
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white p-6 rounded-lg max-w-md w-full m-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold">Expense Leaderboard</h2>
+                            <button onclick="this.closest('.fixed').remove()" 
+                                class="text-gray-600 hover:text-gray-700">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="max-h-96 overflow-y-auto">
+                            ${response.data
+                                .map(
+                                    (user, index) => `
+                                <div class="flex justify-between items-center py-3 border-b">
+                                    <div class="flex items-center">
+                                        <span class="text-lg font-bold mr-2">${index + 1}.</span>
+                                        <span class="font-medium">${user.name || "Anonymous"}</span>
+                                    </div>
+                                    <span class="font-semibold">${formatAmount(user.totalExpenses)}</span>
+                                </div>
+                            `
+                                )
+                                .join("")}
+                        </div>
+                        <button onclick="this.closest('.fixed').remove()" 
+                            class="mt-4 w-full bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 transition-colors">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML("beforeend", leaderboardHTML);
+        } catch (error) {
+            showNotification("Error fetching leaderboard", true);
+            console.error(error);
+        }
     }
-});
+
+    async function checkPremiumStatus() {
+        try {
+            if (!token) return false;
+
+            const response = await axios.get("/api/premium/status", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            isPremiumUser = response.data.isPremium;
+            updateUIForPremiumUser(isPremiumUser);
+
+            return isPremiumUser;
+        } catch (error) {
+            console.error("Error checking premium status:", error);
+            showNotification("Error checking premium status", true);
+            return false;
+        }
+    }
+
+    function updateUIForPremiumUser(isPremium) {
+        const buyPremiumBtn = document.getElementById("buyPremiumBtn");
+        const reportBtn = document.getElementById("reportBtn");
+        const navButtons = document.getElementById("navButtons");
+
+        if (isPremium) {
+            // Premium User UI
+            if (buyPremiumBtn) {
+                buyPremiumBtn.innerHTML = "👑 Premium User";
+                buyPremiumBtn.disabled = true;
+                buyPremiumBtn.className = "bg-yellow-600 text-white px-4 py-2 rounded-lg cursor-default";
+            }
+
+            if (reportBtn) {
+                reportBtn.classList.remove("hidden");
+                reportBtn.addEventListener('click', openReportModal);
+            }
+
+            // Add Leaderboard Button if not already added
+            if (!document.getElementById("leaderboardBtn")) {
+                const leaderboardBtn = document.createElement("button");
+                leaderboardBtn.id = "leaderboardBtn";
+                leaderboardBtn.className = "bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700";
+                leaderboardBtn.innerHTML = "🏆 Leaderboard";
+                leaderboardBtn.addEventListener('click', showLeaderboard);
+                
+                if (navButtons) {
+                    navButtons.insertBefore(leaderboardBtn, buyPremiumBtn);
+                }
+            }
+        } else {
+            // Non-Premium User UI
+            if (reportBtn) {
+                reportBtn.classList.add("hidden");
+                reportBtn.removeEventListener('click', openReportModal);
+            }
+
+            // Remove Leaderboard Button if exists
+            const leaderboardBtn = document.getElementById("leaderboardBtn");
+            if (leaderboardBtn) {
+                leaderboardBtn.remove();
+            }
+
+            if (buyPremiumBtn) {
+                buyPremiumBtn.innerHTML = "Buy Premium";
+                buyPremiumBtn.disabled = false;
+                buyPremiumBtn.className = "bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700";
+            }
+        }
+    }
+
+    async function initiatePayment() {
+        try {
+            const response = await axios.post(
+                "/api/payments/create-order",
+                {},
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+
+            const options = {
+                key: response.data.key_id,
+                order_id: response.data.order_id,
+                handler: async function (response) {
+                    try {
+                        await axios.post(
+                            "/api/payments/update-status",
+                            {
+                                payment_id: response.razorpay_payment_id,
+                                order_id: response.razorpay_order_id,
+                                status: "SUCCESSFUL",
+                            },
+                            {
+                                headers: { Authorization: `Bearer ${token}` },
+                            }
+                        );
+
+                        showNotification("Payment successful! You are now a premium member!");
+                        await checkPremiumStatus();
+                    } catch (error) {
+                        showNotification("Error processing payment", true);
+                        console.error(error);
+                    }
+                },
+                prefill: {
+                    // Optionally, you can prefill user details here
+                },
+                theme: {
+                    color: "#3399cc",
+                },
+            };
+
+            const rzp = new Razorpay(options);
+            rzp.open();
+        } catch (error) {
+            showNotification("Error initiating payment", true);
+            console.error(error);
+        }
+    }
+
+    function openReportModal() {
+        const reportModal = document.getElementById('reportModal');
+        if (reportModal) {
+            reportModal.classList.remove('hidden');
+            loadReport();
+        }
+    }
+
+    function closeReportModal() {
+        const reportModal = document.getElementById('reportModal');
+        if (reportModal) {
+            reportModal.classList.add('hidden');
+        }
+    }
+
+    async function loadReport() {
+        if (!isPremiumUser) {
+            showNotification("This feature is only available for premium users", true);
+            return;
+        }
+
+        const reportType = document.getElementById('reportType')?.value || 'monthly';
+        try {
+            const response = await axios.get(`/api/expenses/report/${reportType}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            renderReport(response.data.transactions);
+        } catch (error) {
+            showNotification('Error loading report', true);
+            console.error(error);
+        }
+    }
+
+    function renderReport(transactions) {
+        let totalIncome = 0;
+        let totalExpense = 0;
+        
+        const reportRows = transactions.map(transaction => {
+            if (transaction.type === 'income') {
+                totalIncome += parseFloat(transaction.amount);
+            } else {
+                totalExpense += parseFloat(transaction.amount);
+            }
+            
+            // Fix date formatting
+            const date = new Date(transaction.createdAt).toLocaleDateString('en-IN', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+            
+            return `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-3">${date}</td>
+                    <td class="p-3">${transaction.description}</td>
+                    <td class="p-3">${transaction.category}</td>
+                    <td class="p-3 text-right">${transaction.type === 'income' ? formatAmount(transaction.amount) : ''}</td>
+                    <td class="p-3 text-right">${transaction.type === 'expense' ? formatAmount(transaction.amount) : ''}</td>
+                </tr>
+            `;
+        }).join('');
+
+        document.getElementById('reportData').innerHTML = reportRows;
+        document.getElementById('totalIncome').textContent = formatAmount(totalIncome);
+        document.getElementById('totalExpense').textContent = formatAmount(totalExpense);
+        document.getElementById('totalSavings').textContent = formatAmount(totalIncome - totalExpense);
+    }
+
+    function logout() {
+        localStorage.removeItem("token");
+        window.location.href = "/login.html";
+    }
+
+    async function loadDownloadHistory() {
+        try {
+            const response = await axios.get('/api/expenses/download-history', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = response.data.history
+                .map(item => `
+                    <div class="bg-white p-4 rounded-lg shadow-sm">
+                        <p class="text-sm text-gray-600">Downloaded on: ${new Date(item.downloadedAt).toLocaleString()}</p>
+                        <a href="${item.fileUrl}" target="_blank" class="text-blue-600 hover:underline">Download File</a>
+                    </div>
+                `)
+                .join('');
+
+            document.getElementById('downloadHistory').classList.remove('hidden');
+        } catch (error) {
+            console.error('Error loading download history:', error);
+        }
+    }
     </script>
-  </body>
+</body>
 </html>

@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
@@ -35,6 +36,7 @@ async function syncDatabase() {
 // Routes
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/expenses', require('./routes/expenseRoutes'));
+app.use('/api/expenses', require('./routes/downloadRoutes')); // Register downloadRoutes.js here
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/premium', require('./routes/premiumRoutes'));
 app.use('/api/password', require('./routes/passwordRoutes'));
@@ -46,6 +48,11 @@ app.get('/password/resetpassword/:token', (req, res) => {
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/signup.html'));
+});
+
+// Handle Undefined Routes
+app.use((req, res, next) => {
+    res.status(404).json({ message: 'Route not found' });
 });
 
 // Start server
