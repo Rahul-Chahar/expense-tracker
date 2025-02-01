@@ -199,6 +199,13 @@
         }, isError ? 5000 : 3000);
     }
 
+    function hidePagination() {
+    const paginationControls = document.getElementById("paginationControls");
+    if (paginationControls) {
+        paginationControls.style.display = "none";
+    }
+}
+
     function setupEventListeners() {
         // Items per page listener
         const itemsPerPageSelect = document.getElementById("itemsPerPage");
