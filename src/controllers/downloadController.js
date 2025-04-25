@@ -1,8 +1,6 @@
-// controllers/downloadController.js
 const { PutObjectCommand } = require('@aws-sdk/client-s3');
 const s3 = require('../services/awsService');
 const { Expense, DownloadHistory } = require('../models/relationships');
-const { Op } = require('sequelize');
 
 exports.downloadExpenses = async (req, res) => {
     try {
@@ -20,7 +18,6 @@ exports.downloadExpenses = async (req, res) => {
 
         // Convert expenses to CSV format with proper escaping
         const csvData = expenses.map(expense => {
-            // Escape double quotes and commas in fields
             const description = `"${expense.description.replace(/"/g, '""')}"`;
             const category = `"${expense.category.replace(/"/g, '""')}"`;
             return `${expense.amount},${description},${category},${expense.type},${expense.createdAt}`;

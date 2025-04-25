@@ -1,11 +1,9 @@
-// server.js
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const cors = require('cors');
-const compression = require('compression');
 const sequelize = require('./database/sequelize');
-require('dotenv').config();
 require('./models/relationships');
 
 const app = express();
@@ -13,8 +11,8 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-app.use(compression());
 app.use(express.static(path.join(__dirname, '../public')));
+
 
 // Database setup
 async function syncDatabase() {
@@ -36,7 +34,7 @@ async function syncDatabase() {
 // Routes
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/expenses', require('./routes/expenseRoutes'));
-app.use('/api/expenses', require('./routes/downloadRoutes')); // Register downloadRoutes.js here
+app.use('/api/expenses', require('./routes/downloadRoutes')); 
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/premium', require('./routes/premiumRoutes'));
 app.use('/api/password', require('./routes/passwordRoutes'));
@@ -68,3 +66,4 @@ async function startServer() {
 }
 // Start
 startServer();
+//

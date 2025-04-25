@@ -1,4 +1,3 @@
-// models/DownloadHistory.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../database/sequelize');
 

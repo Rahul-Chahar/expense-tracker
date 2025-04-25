@@ -17,7 +17,7 @@ const Expense = sequelize.define('Expense', {
         }
     },
     amount: {
-        type: DataTypes.DECIMAL(10, 2), // Changed from FLOAT for better precision
+        type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
         validate: {
             isDecimal: true,

@@ -1,4 +1,3 @@
-// models/relationships.js
 const User = require('./User');
 const Expense = require('./Expense');
 const Order = require('./Order');

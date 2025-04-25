@@ -1,10 +1,14 @@
+require('dotenv').config();
 const Razorpay = require('razorpay');
 const { Order, User } = require('../models/relationships');
 
+
 const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
+    key_id: process.env.RAZORPAY_KEY_ID || "MISSING_KEY_ID",
+    key_secret: process.env.RAZORPAY_KEY_SECRET || "MISSING_KEY_SECRET"
 });
+
+
 
 exports.createOrder = async (req, res) => {
     try {
